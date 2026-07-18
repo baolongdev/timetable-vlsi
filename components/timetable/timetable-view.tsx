@@ -38,22 +38,46 @@ export function TimetableView({
     React.useState<TimetableFilters>(INITIAL_FILTERS)
   const [selected, setSelected] = React.useState<Schedule | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  // Đổi giảng viên trực tiếp trên dialog — chỉ tồn tại trong phiên
+  const [lecturerOverrides, setLecturerOverrides] = React.useState<
+    Record<string, string>
+  >({})
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
+  const effectiveSchedules = React.useMemo(
+    () =>
+      schedules.map((s) =>
+        lecturerOverrides[s.id]
+          ? { ...s, lecturer: lecturerOverrides[s.id] }
+          : s
+      ),
+    [schedules, lecturerOverrides]
+  )
+
+  const handleLecturerChange = (scheduleId: string, lecturer: string) => {
+    setLecturerOverrides((prev) => ({ ...prev, [scheduleId]: lecturer }))
+    setSelected((prev) =>
+      prev && prev.id === scheduleId ? { ...prev, lecturer } : prev
+    )
+  }
+
   const filtered = React.useMemo(
-    () => filterSchedules(schedules, filters),
-    [schedules, filters]
+    () => filterSchedules(effectiveSchedules, filters),
+    [effectiveSchedules, filters]
   )
 
   const lecturers = React.useMemo(
-    () => getUniqueLecturers(schedules),
-    [schedules]
+    () => getUniqueLecturers(effectiveSchedules),
+    [effectiveSchedules]
   )
   const courses = React.useMemo(
-    () => getUniqueCourses(schedules),
-    [schedules]
+    () => getUniqueCourses(effectiveSchedules),
+    [effectiveSchedules]
   )
-  const rooms = React.useMemo(() => getUniqueRooms(schedules), [schedules])
+  const rooms = React.useMemo(
+    () => getUniqueRooms(effectiveSchedules),
+    [effectiveSchedules]
+  )
 
   const handleSelect = (schedule: Schedule) => {
     setSelected(schedule)
@@ -164,6 +188,7 @@ export function TimetableView({
         schedule={selected}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        onLecturerChange={handleLecturerChange}
       />
     </div>
   )

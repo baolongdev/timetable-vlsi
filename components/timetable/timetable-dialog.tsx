@@ -1,15 +1,27 @@
 "use client"
 
+import * as React from "react"
 import {
   CalendarRange,
   Clock,
   Hash,
   MapPin,
+  Pencil,
   Users,
+  X,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { LecturerChip } from "@/components/lecturer-chip"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import {
   Dialog,
   DialogContent,
@@ -29,15 +41,20 @@ import {
   getPeriodSpanLabel,
 } from "@/data/timetable"
 import { findCourseByCode } from "@/data/courses"
+import { initialLecturers } from "@/data/lecturers"
 import { getLecturerColor } from "@/lib/lecturer-colors"
 import { getInitials } from "@/lib/person-color"
 import { cn } from "@/lib/utils"
 import type { Schedule } from "@/types/timetable"
 
+const lecturerNames = initialLecturers.map((l) => l.name)
+
 type TimetableDialogProps = {
   schedule: Schedule | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Đổi giảng viên trực tiếp cho nhóm lớp này (chỉ trong phiên) */
+  onLecturerChange?: (scheduleId: string, lecturer: string) => void
 }
 
 function Row({
@@ -68,7 +85,14 @@ export function TimetableDialog({
   schedule,
   open,
   onOpenChange,
+  onLecturerChange,
 }: TimetableDialogProps) {
+  const [editingLecturer, setEditingLecturer] = React.useState(false)
+
+  React.useEffect(() => {
+    if (!open) setEditingLecturer(false)
+  }, [open])
+
   if (!schedule) return null
 
   const timeRange = getPeriodRangeLabel(
@@ -180,13 +204,68 @@ export function TimetableDialog({
                 >
                   {getInitials(schedule.lecturer)}
                 </span>
-                <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <span className="text-xs font-medium text-muted-foreground">
                     Lecturer
                   </span>
-                  <span className="text-sm font-medium text-foreground">
-                    {schedule.lecturer}
-                  </span>
+                  {editingLecturer && onLecturerChange ? (
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      <Combobox
+                        autoHighlight
+                        items={lecturerNames}
+                        value={schedule.lecturer}
+                        onValueChange={(value) => {
+                          if (value) {
+                            onLecturerChange(schedule.id, value)
+                            setEditingLecturer(false)
+                          }
+                        }}
+                      >
+                        <ComboboxInput
+                          placeholder="Tìm giảng viên…"
+                          className="h-9 w-full max-w-xs rounded-lg"
+                          autoFocus
+                        />
+                        <ComboboxContent>
+                          <ComboboxEmpty>
+                            Không tìm thấy giảng viên.
+                          </ComboboxEmpty>
+                          <ComboboxList>
+                            {(item: string) => (
+                              <ComboboxItem key={item} value={item}>
+                                {item}
+                              </ComboboxItem>
+                            )}
+                          </ComboboxList>
+                        </ComboboxContent>
+                      </Combobox>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setEditingLecturer(false)}
+                        aria-label="Hủy đổi giảng viên"
+                      >
+                        <X />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium text-foreground">
+                        {schedule.lecturer}
+                      </span>
+                      {onLecturerChange ? (
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-muted-foreground opacity-60 hover:opacity-100"
+                          onClick={() => setEditingLecturer(true)}
+                          aria-label="Đổi giảng viên"
+                        >
+                          <Pencil />
+                        </Button>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
               <Row icon={Users} label="Group" value={schedule.className} />
