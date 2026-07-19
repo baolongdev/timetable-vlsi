@@ -8,6 +8,7 @@ Thời khóa biểu học kỳ Tổ VLSI — Kỹ thuật Máy tính. Minimal bl
 - TypeScript (strict)
 - Tailwind CSS v4
 - shadcn/ui (base-nova) + Base UI
+- MongoDB (optional — **đồng bộ** khoa / phân công / giảng viên giữa các máy)
 - Drizzle ORM + Neon Postgres (optional — static data fallback)
 - Lucide React, GSAP
 
@@ -19,7 +20,23 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). No DB required — the app
-reads from static files in `data/` unless `DATABASE_URL` is set.
+works offline with `localStorage` + static files. Set `MONGODB_URI` to sync.
+
+## MongoDB sync (recommended)
+
+Đồng bộ **departments** (Excel import + phân công) và **lecturers** qua API `/api/data/*`.
+
+```bash
+cp .env.example .env
+# Điền MONGODB_URI (MongoDB Atlas free tier)
+# MONGODB_DB=timetable-vlsi   # optional
+```
+
+- Client: cache `localStorage` → pull khi mở trang / focus / mỗi 30s → push khi sửa.
+- Không có `MONGODB_URI`: app vẫn chạy local (ghi chú «lưu cục bộ»).
+- Có Mongo: UI hiện «đồng bộ MongoDB».
+
+**Vercel:** Project Settings → Environment Variables → `MONGODB_URI`, `MONGODB_DB`.
 
 ## Database (optional, Neon Postgres)
 
@@ -72,6 +89,6 @@ types/                     # Models
 ## Deploy (Vercel)
 
 1. Push to GitHub, import repo on Vercel
-2. (Optional) Add Neon integration → `DATABASE_URL` env var
-3. Set `NEXT_PUBLIC_SITE_URL` to the production URL
-4. `npm run db:push && npm run db:seed` locally against the prod DB
+2. Add `MONGODB_URI` (và tùy chọn `MONGODB_DB`) — **đồng bộ production**
+3. (Optional) Neon → `DATABASE_URL` env var
+4. Set `NEXT_PUBLIC_SITE_URL` to the production URL

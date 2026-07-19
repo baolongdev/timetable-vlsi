@@ -130,7 +130,7 @@ function DepartmentCard({ dept }: { dept: Department }) {
 }
 
 export function DepartmentsView() {
-  const { departments, hydrated } = useDepartments()
+  const { departments, hydrated, remoteConfigured } = useDepartments()
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -156,6 +156,11 @@ export function DepartmentsView() {
                 {departments.length > 0
                   ? `${departments.length} khoa đã import — chọn khoa để xem thời khóa biểu`
                   : "Upload file Excel phân công để bắt đầu"}
+                {remoteConfigured ? (
+                  <span className="text-foreground/60"> · đồng bộ MongoDB</span>
+                ) : remoteConfigured === false ? (
+                  <span className="text-foreground/60"> · lưu cục bộ</span>
+                ) : null}
               </p>
             </div>
           </div>

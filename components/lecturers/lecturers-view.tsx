@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/tooltip"
 import { initialLecturers } from "@/data/lecturers"
 import { getLecturerColor } from "@/lib/lecturer-colors"
+import { lecturerStore, useLecturers } from "@/lib/lecturer-store"
 import { getInitials } from "@/lib/person-color"
 import { cn } from "@/lib/utils"
 import {
@@ -62,10 +63,10 @@ function roleBadgeVariant(
 export function LecturersView({
   initialData = initialLecturers,
 }: {
-  /** Lecturers from the server (DB); falls back to static data */
+  /** Lecturers from the server (DB / Mongo); falls back to static data */
   initialData?: Lecturer[]
 }) {
-  const [lecturers, setLecturers] = React.useState<Lecturer[]>(initialData)
+  const { lecturers, remoteConfigured } = useLecturers(initialData)
   const [search, setSearch] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
 
@@ -82,7 +83,8 @@ export function LecturersView({
         !q ||
         l.name.toLowerCase().includes(q) ||
         l.role.toLowerCase().includes(q) ||
-        (l.email?.toLowerCase().includes(q) ?? false)
+        (l.email?.toLowerCase().includes(q) ?? false) ||
+        (l.staffId?.toLowerCase().includes(q) ?? false)
       const matchRole = roleFilter === "all" || l.role === roleFilter
       return matchSearch && matchRole
     })
@@ -104,42 +106,12 @@ export function LecturersView({
   }
 
   const handleSubmit = (data: Omit<Lecturer, "id"> & { id?: string }) => {
-    if (data.id) {
-      setLecturers((list) =>
-        list.map((l) =>
-          l.id === data.id
-            ? {
-                ...l,
-                name: data.name,
-                role: data.role,
-                email: data.email,
-                phone: data.phone,
-                note: data.note,
-              }
-            : l
-        )
-      )
-      return
-    }
-    const id = String(
-      Math.max(0, ...lecturers.map((l) => Number(l.id) || 0)) + 1
-    )
-    setLecturers((list) => [
-      ...list,
-      {
-        id,
-        name: data.name,
-        role: data.role,
-        email: data.email,
-        phone: data.phone,
-        note: data.note,
-      },
-    ])
+    lecturerStore.upsert(data)
   }
 
   const handleDelete = () => {
     if (!deleting) return
-    setLecturers((list) => list.filter((l) => l.id !== deleting.id))
+    lecturerStore.remove(deleting.id)
     setDeleting(null)
   }
 
@@ -165,6 +137,11 @@ export function LecturersView({
               </h1>
               <p className="text-sm text-muted-foreground">
                 Quản lý danh sách giảng viên · {lecturers.length} người
+                {remoteConfigured ? (
+                  <span className="text-foreground/60"> · đồng bộ MongoDB</span>
+                ) : remoteConfigured === false ? (
+                  <span className="text-foreground/60"> · lưu cục bộ</span>
+                ) : null}
               </p>
             </div>
           </div>

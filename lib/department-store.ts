@@ -2,25 +2,27 @@
 
 import * as React from "react"
 
+import {
+  deleteDepartmentRemote,
+  fetchSyncSnapshot,
+  pushAssignmentRemote,
+  pushDepartments,
+  pushOneDepartment,
+} from "@/lib/sync-client"
+import type { Department } from "@/types/department"
 import type { Assignment, ImportedSection } from "@/types/import"
 import { sectionKey } from "@/types/import"
 
-export type Department = {
-  /** id ổn định: slug từ tên sheet */
-  id: string
-  /** Tên khoa / tổ (tên sheet trong file Excel) */
-  name: string
-  fileName: string
-  uploadedAt: number
-  sections: ImportedSection[]
-  assignments: Record<string, Assignment>
-}
+export type { Department }
 
 type StoreState = {
   departments: Department[]
+  /** Timestamp local lần mutate / lần pull server gần nhất */
+  updatedAt: number
 }
 
 const STORAGE_KEY = "timetable-departments-v2"
+const META_KEY = "timetable-departments-meta-v2"
 
 /**
  * Singleton gắn globalThis — tránh HMR/Next tạo 2 bản store
@@ -29,28 +31,43 @@ const STORAGE_KEY = "timetable-departments-v2"
 type GlobalDeptStore = {
   state: StoreState
   hydrated: boolean
+  syncing: boolean
   version: number
   listeners: Set<() => void>
   /** Snapshot ổn định cho useSyncExternalStore (đổi ref khi version tăng) */
   snapshot: DeptStoreSnapshot
+  pushTimer: number | null
+  pollTimer: number | null
+  remoteConfigured: boolean | null
 }
 
 export type DeptStoreSnapshot = {
   departments: Department[]
   version: number
+  updatedAt: number
+  remoteConfigured: boolean | null
 }
 
 const g = globalThis as unknown as { __timetableDeptStore?: GlobalDeptStore }
 
 function getG(): GlobalDeptStore {
   if (!g.__timetableDeptStore) {
-    const empty: StoreState = { departments: [] }
+    const empty: StoreState = { departments: [], updatedAt: 0 }
     g.__timetableDeptStore = {
       state: empty,
       hydrated: false,
+      syncing: false,
       version: 0,
       listeners: new Set(),
-      snapshot: { departments: empty.departments, version: 0 },
+      snapshot: {
+        departments: empty.departments,
+        version: 0,
+        updatedAt: 0,
+        remoteConfigured: null,
+      },
+      pushTimer: null,
+      pollTimer: null,
+      remoteConfigured: null,
     }
   }
   return g.__timetableDeptStore
@@ -61,7 +78,7 @@ function slugify(name: string): string {
     name
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
+      .replace(/[\u0300-\u036f]/g, "")
       .replace(/đ/g, "d")
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "khoa"
@@ -69,14 +86,22 @@ function slugify(name: string): string {
 }
 
 function loadState(): StoreState {
-  if (typeof window === "undefined") return { departments: [] }
+  if (typeof window === "undefined") return { departments: [], updatedAt: 0 }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return { departments: [] }
-    const parsed = JSON.parse(raw) as StoreState
-    return { departments: parsed.departments ?? [] }
+    const metaRaw = window.localStorage.getItem(META_KEY)
+    const meta = metaRaw ? (JSON.parse(metaRaw) as { updatedAt?: number }) : {}
+    if (!raw) return { departments: [], updatedAt: meta.updatedAt ?? 0 }
+    const parsed = JSON.parse(raw) as StoreState | { departments?: Department[] }
+    return {
+      departments: parsed.departments ?? [],
+      updatedAt:
+        ("updatedAt" in parsed && typeof parsed.updatedAt === "number"
+          ? parsed.updatedAt
+          : meta.updatedAt) ?? 0,
+    }
   } catch {
-    return { departments: [] }
+    return { departments: [], updatedAt: 0 }
   }
 }
 
@@ -85,21 +110,134 @@ function emit() {
   for (const l of store.listeners) l()
 }
 
-function persist(next: StoreState) {
-  const store = getG()
-  store.state = next
-  store.version += 1
-  // Snapshot mới mỗi lần mutate → useSyncExternalStore luôn detect thay đổi
-  store.snapshot = {
-    departments: next.departments,
-    version: store.version,
-  }
+function writeLocal(next: StoreState) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ departments: next.departments })
+    )
+    window.localStorage.setItem(
+      META_KEY,
+      JSON.stringify({ updatedAt: next.updatedAt })
+    )
   } catch {
     // localStorage đầy / bị chặn — giữ state trong phiên
   }
+}
+
+function applyState(next: StoreState, opts?: { skipRemote?: boolean }) {
+  const store = getG()
+  store.state = next
+  store.version += 1
+  store.snapshot = {
+    departments: next.departments,
+    version: store.version,
+    updatedAt: next.updatedAt,
+    remoteConfigured: store.remoteConfigured,
+  }
+  writeLocal(next)
   emit()
+  if (!opts?.skipRemote) schedulePush()
+}
+
+function persist(departments: Department[]) {
+  applyState({ departments, updatedAt: Date.now() })
+}
+
+function schedulePush() {
+  if (typeof window === "undefined") return
+  const store = getG()
+  if (store.remoteConfigured === false) return
+  if (store.pushTimer != null) window.clearTimeout(store.pushTimer)
+  store.pushTimer = window.setTimeout(() => {
+    store.pushTimer = null
+    void flushToRemote()
+  }, 400)
+}
+
+async function flushToRemote() {
+  const store = getG()
+  if (store.syncing) return
+  store.syncing = true
+  try {
+    const ok = await pushDepartments(store.state.departments)
+    if (ok) {
+      store.remoteConfigured = true
+      store.snapshot = {
+        ...store.snapshot,
+        remoteConfigured: true,
+      }
+      emit()
+    } else if (store.remoteConfigured == null) {
+      // Lần đầu fail (503) → đánh dấu không có remote, ngừng spam
+      const statusTry = await fetchSyncSnapshot()
+      if (!statusTry.ok && statusTry.reason === "mongo_not_configured") {
+        store.remoteConfigured = false
+        store.snapshot = {
+          ...store.snapshot,
+          remoteConfigured: false,
+        }
+        emit()
+      }
+    }
+  } finally {
+    store.syncing = false
+  }
+}
+
+/** Kéo snapshot từ server và merge LWW theo updatedAt */
+export async function pullDepartmentsFromRemote(): Promise<boolean> {
+  if (typeof window === "undefined") return false
+  ensureHydrated()
+  const store = getG()
+
+  const result = await fetchSyncSnapshot(store.state.updatedAt || undefined)
+  if (!result.ok) {
+    if (result.reason === "mongo_not_configured") {
+      store.remoteConfigured = false
+      store.snapshot = { ...store.snapshot, remoteConfigured: false }
+      emit()
+    }
+    return false
+  }
+  if ("notModified" in result && result.notModified) {
+    store.remoteConfigured = true
+    return true
+  }
+  if (!("data" in result)) return false
+
+  const data = result.data
+  store.remoteConfigured = true
+
+  // Server trống + local có data → đẩy local lên
+  if (
+    data.departments.length === 0 &&
+    store.state.departments.length > 0
+  ) {
+    await pushDepartments(store.state.departments)
+    return true
+  }
+
+  // Local mới hơn server (offline edit) → push
+  if (
+    store.state.updatedAt > 0 &&
+    data.updatedAt > 0 &&
+    store.state.updatedAt > data.updatedAt &&
+    store.state.departments.length > 0
+  ) {
+    await pushDepartments(store.state.departments)
+    return true
+  }
+
+  // Server thắng → replace local (không push lại ngay)
+  applyState(
+    {
+      departments: data.departments,
+      updatedAt: data.updatedAt || Date.now(),
+    },
+    { skipRemote: true }
+  )
+  return true
 }
 
 function ensureHydrated() {
@@ -112,6 +250,8 @@ function ensureHydrated() {
   store.snapshot = {
     departments: loaded.departments,
     version: store.version,
+    updatedAt: loaded.updatedAt,
+    remoteConfigured: store.remoteConfigured,
   }
 }
 
@@ -119,6 +259,8 @@ function ensureHydrated() {
 const SERVER_SNAPSHOT: DeptStoreSnapshot = {
   departments: [],
   version: 0,
+  updatedAt: 0,
+  remoteConfigured: null,
 }
 
 export const departmentStore = {
@@ -160,28 +302,28 @@ export const departmentStore = {
       sections,
       assignments: kept,
     }
-    persist({
-      departments: [
-        ...store.state.departments.filter((d) => d.id !== id),
-        dept,
-      ].sort((a, b) => a.name.localeCompare(b.name, "vi")),
-    })
+    const departments = [
+      ...store.state.departments.filter((d) => d.id !== id),
+      dept,
+    ].sort((a, b) => a.name.localeCompare(b.name, "vi"))
+    persist(departments)
+    // Đẩy ngay khoa vừa import (không chờ debounce full list)
+    void pushOneDepartment(dept)
     return id
   },
 
   removeDepartment(id: string) {
     ensureHydrated()
     const store = getG()
-    persist({
-      departments: store.state.departments.filter((d) => d.id !== id),
-    })
+    persist(store.state.departments.filter((d) => d.id !== id))
+    void deleteDepartmentRemote(id)
   },
 
   assign(deptId: string, key: string, patch: Assignment) {
     ensureHydrated()
     const store = getG()
-    persist({
-      departments: store.state.departments.map((d) =>
+    persist(
+      store.state.departments.map((d) =>
         d.id === deptId
           ? {
               ...d,
@@ -191,10 +333,13 @@ export const departmentStore = {
               },
             }
           : d
-      ),
-    })
+      )
+    )
+    void pushAssignmentRemote(deptId, key, patch)
   },
 }
+
+const POLL_MS = 30_000
 
 /** Hook đọc danh sách khoa + version (để force recompute conflict realtime) */
 export function useDepartments() {
@@ -204,10 +349,35 @@ export function useDepartments() {
     departmentStore.getServerSnapshot
   )
   const [hydrated, setHydrated] = React.useState(false)
-  React.useEffect(() => setHydrated(true), [])
+
+  React.useEffect(() => {
+    setHydrated(true)
+    void pullDepartmentsFromRemote()
+
+    const onFocus = () => {
+      void pullDepartmentsFromRemote()
+    }
+    window.addEventListener("focus", onFocus)
+    const store = getG()
+    if (store.pollTimer != null) window.clearInterval(store.pollTimer)
+    store.pollTimer = window.setInterval(() => {
+      void pullDepartmentsFromRemote()
+    }, POLL_MS)
+
+    return () => {
+      window.removeEventListener("focus", onFocus)
+      if (store.pollTimer != null) {
+        window.clearInterval(store.pollTimer)
+        store.pollTimer = null
+      }
+    }
+  }, [])
+
   return {
     departments: snapshot.departments,
     version: snapshot.version,
+    updatedAt: snapshot.updatedAt,
+    remoteConfigured: snapshot.remoteConfigured,
     hydrated,
   }
 }

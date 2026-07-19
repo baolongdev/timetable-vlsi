@@ -1,17 +1,27 @@
 /**
- * Server-side data access: reads from Neon Postgres when DATABASE_URL is
- * set, otherwise falls back to the static files in /data — so the app runs
- * with zero config in dev and switches to the DB on Vercel automatically.
+ * Server-side data access:
+ * 1. MongoDB (MONGODB_URI) — nguồn đồng bộ runtime
+ * 2. Neon Postgres (DATABASE_URL) — legacy seed
+ * 3. Static files in /data — zero-config fallback
  */
 import { getDb, hasDatabase } from "@/db"
 import { initialCourses } from "@/data/courses"
 import { initialLecturers } from "@/data/lecturers"
 import { sections as staticSections } from "@/data/sections"
+import { hasMongo, loadAllLecturers as loadMongoLecturers } from "@/lib/mongo"
 import type { Course } from "@/types/course"
 import type { Lecturer, LecturerRole } from "@/types/lecturer"
 import type { CourseSection, SectionLanguage } from "@/types/section"
 
 export async function loadLecturers(): Promise<Lecturer[]> {
+  if (hasMongo()) {
+    try {
+      const list = await loadMongoLecturers()
+      if (list.length > 0) return list
+    } catch (e) {
+      console.error("[loadLecturers] mongo", e)
+    }
+  }
   if (!hasDatabase()) return initialLecturers
   const rows = await getDb().query.lecturers.findMany()
   return rows.map((r) => ({
