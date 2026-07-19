@@ -40,11 +40,15 @@ export function LecturerPicker({
         showClear
         className={className ?? "h-8 w-full rounded-lg text-[13px]"}
       />
-      <ComboboxContent>
+      <ComboboxContent className="w-auto min-w-(--anchor-width) max-w-80">
         <ComboboxEmpty>Không tìm thấy giảng viên.</ComboboxEmpty>
         <ComboboxList>
           {(item: string) => (
-            <ComboboxItem key={item} value={item}>
+            <ComboboxItem
+              key={item}
+              value={item}
+              className="whitespace-nowrap"
+            >
               {item}
             </ComboboxItem>
           )}

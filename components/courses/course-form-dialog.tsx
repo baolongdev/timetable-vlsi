@@ -60,7 +60,11 @@ function LecturerGroupList() {
             <ComboboxLabel>{group.value}</ComboboxLabel>
             <ComboboxCollection>
               {(item: string) => (
-                <ComboboxItem key={item} value={item}>
+                <ComboboxItem
+                  key={item}
+                  value={item}
+                  className="whitespace-nowrap"
+                >
                   {item}
                 </ComboboxItem>
               )}
@@ -96,7 +100,7 @@ function LecturerSingleSelect({
         showClear
         className="h-10 w-full rounded-xl"
       />
-      <ComboboxContent>
+      <ComboboxContent className="w-auto min-w-(--anchor-width) max-w-80">
         <LecturerGroupList />
       </ComboboxContent>
     </Combobox>
@@ -136,7 +140,10 @@ function LecturerMultiSelect({
           )}
         </ComboboxValue>
       </ComboboxChips>
-      <ComboboxContent anchor={anchor}>
+      <ComboboxContent
+        anchor={anchor}
+        className="w-auto min-w-(--anchor-width) max-w-80"
+      >
         <LecturerGroupList />
       </ComboboxContent>
     </Combobox>

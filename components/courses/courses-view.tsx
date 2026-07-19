@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -15,10 +16,24 @@ import {
 } from "lucide-react"
 
 import { CourseDeleteDialog } from "@/components/courses/course-delete-dialog"
-import { CourseFormDialog } from "@/components/courses/course-form-dialog"
-import { CourseSectionsDialog } from "@/components/courses/course-sections-dialog"
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { LecturerChip } from "@/components/lecturer-chip"
+
+// Dialog nặng (combobox, bảng nhóm lớp) — tải khi mở lần đầu
+const CourseFormDialog = dynamic(
+  () =>
+    import("@/components/courses/course-form-dialog").then(
+      (m) => m.CourseFormDialog
+    ),
+  { ssr: false }
+)
+const CourseSectionsDialog = dynamic(
+  () =>
+    import("@/components/courses/course-sections-dialog").then(
+      (m) => m.CourseSectionsDialog
+    ),
+  { ssr: false }
+)
 import { ThemeToggle } from "@/components/theme-toggle"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"

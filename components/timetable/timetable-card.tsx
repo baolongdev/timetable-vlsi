@@ -7,11 +7,6 @@ import { getPeriodRangeLabel } from "@/data/timetable"
 import { getLecturerColor } from "@/lib/lecturer-colors"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { Schedule } from "@/types/timetable"
 
@@ -73,37 +68,30 @@ export function TimetableCard({
     : style ?? {}
 
   return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={onClick}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault()
-                onClick?.()
-              }
-            }}
-            onMouseEnter={() => setHover(true)}
-            onMouseLeave={() => setHover(false)}
-            onFocus={() => setHover(true)}
-            onBlur={() => setHover(false)}
-            style={layoutStyle}
-            className={cn(
-              "group absolute z-10 cursor-pointer text-left outline-none",
-              "transition-all duration-150 ease-out",
-              isExpanded
-                ? "z-40 overflow-visible"
-                : "overflow-hidden hover:z-30",
-              "hover:-translate-y-px",
-              "focus-visible:z-40 focus-visible:ring-2 focus-visible:ring-ring/30",
-              className
-            )}
-          />
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick?.()
         }
-      >
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      style={layoutStyle}
+      className={cn(
+        "group absolute z-10 cursor-pointer text-left outline-none",
+        "transition-all duration-150 ease-out",
+        isExpanded ? "z-40 overflow-visible" : "overflow-hidden hover:z-30",
+        "hover:-translate-y-px",
+        "focus-visible:z-40 focus-visible:ring-2 focus-visible:ring-ring/30",
+        className
+      )}
+    >
         <div
           className={cn(
             "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl",
@@ -273,20 +261,6 @@ export function TimetableCard({
             )}
           </div>
         </div>
-      </TooltipTrigger>
-      <TooltipContent side="top" sideOffset={8} className="max-w-xs">
-        <p className="font-semibold">{schedule.courseName}</p>
-        <p className="font-mono text-[11px] text-background/85">
-          {schedule.courseCode} · {schedule.className}
-        </p>
-        <p className="text-[11px] text-background/80">
-          {schedule.lecturer} · {schedule.room}
-        </p>
-        <p className="font-mono text-[11px] text-background/70">{timeRange}</p>
-        <p className="font-mono text-[11px] text-background/70">
-          Tuần {schedule.weeks}
-        </p>
-      </TooltipContent>
-    </Tooltip>
+    </div>
   )
 }

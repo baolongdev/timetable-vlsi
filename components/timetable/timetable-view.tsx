@@ -1,16 +1,25 @@
 "use client"
 
 import * as React from "react"
+import dynamic from "next/dynamic"
 import { X } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { pagePad, sectionGap } from "@/components/timetable/layout"
-import { TimetableDialog } from "@/components/timetable/timetable-dialog"
 import { TimetableEmpty } from "@/components/timetable/timetable-empty"
 import { TimetableGrid } from "@/components/timetable/timetable-grid"
 import { TimetableHeader } from "@/components/timetable/timetable-header"
 import { TimetableMobile } from "@/components/timetable/timetable-mobile"
 import { TimetableToolbar } from "@/components/timetable/timetable-toolbar"
+
+// Dialog chỉ tải khi người dùng click card đầu tiên — giảm bundle ban đầu
+const TimetableDialog = dynamic(
+  () =>
+    import("@/components/timetable/timetable-dialog").then(
+      (m) => m.TimetableDialog
+    ),
+  { ssr: false }
+)
 import { Badge } from "@/components/ui/badge"
 import {
   filterSchedules,

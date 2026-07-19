@@ -1,6 +1,29 @@
 "use client"
 
-import { FlowingMenu, type FlowingMenuItem } from "@/components/flowing-menu"
+import dynamic from "next/dynamic"
+
+import { Skeleton } from "@/components/ui/skeleton"
+import type { FlowingMenuItem } from "@/components/flowing-menu"
+
+// GSAP menu nặng — tải lười với skeleton thay thế
+const FlowingMenu = dynamic(
+  () => import("@/components/flowing-menu").then((m) => m.FlowingMenu),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full flex-col">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex flex-1 items-center justify-center border-t border-border first:border-t-0"
+          >
+            <Skeleton className="h-8 w-48" />
+          </div>
+        ))}
+      </div>
+    ),
+  }
+)
 
 /**
  * Landing menu using React Bits FlowingMenu.
