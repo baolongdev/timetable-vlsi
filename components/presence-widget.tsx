@@ -33,8 +33,10 @@ import type { PresenceUser } from "@/types/presence"
 /** localStorage — OnboardingTour chờ key này ready trước khi chạy driver.js */
 export const PRESENCE_PROFILE_KEY = "vlsi-presence-profile-v1"
 const PROFILE_KEY = PRESENCE_PROFILE_KEY
-const HEARTBEAT_MS = 15_000
-const MAX_AVATARS = 4
+/** ID thiết bị cố định trong trình duyệt — mỗi máy một cái */
+const DEVICE_KEY = "vlsi-presence-device-v1"
+const HEARTBEAT_MS = 12_000
+const MAX_AVATARS = 5
 
 type Profile = {
   displayName: string
@@ -46,11 +48,10 @@ type PresenceContextValue = {
   users: PresenceUser[]
   count: number
   configured: boolean | null
-  selfKey: string | null
+  selfDeviceId: string | null
   profile: Profile
   openNameDialog: () => void
   ready: boolean
-  /** false cho đến khi client mount — tránh hydration mismatch */
   mounted: boolean
 }
 
@@ -88,7 +89,25 @@ function saveProfile(p: Profile) {
   }
 }
 
+function loadOrCreateDeviceId(): string {
+  if (typeof window === "undefined") return ""
+  try {
+    let id = localStorage.getItem(DEVICE_KEY)
+    if (!id) {
+      id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `d-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+      localStorage.setItem(DEVICE_KEY, id)
+    }
+    return id
+  } catch {
+    return `d-${Date.now()}`
+  }
+}
+
 async function heartbeat(body: {
+  deviceId: string
   displayName: string
   anonymous: boolean
   path: string
@@ -96,7 +115,7 @@ async function heartbeat(body: {
   users: PresenceUser[]
   count: number
   configured: boolean
-  selfKey: string | null
+  selfDeviceId: string | null
 } | null> {
   try {
     const res = await fetch("/api/presence", {
@@ -106,19 +125,19 @@ async function heartbeat(body: {
       cache: "no-store",
     })
     if (res.status === 503) {
-      return { users: [], count: 0, configured: false, selfKey: null }
+      return { users: [], count: 0, configured: false, selfDeviceId: null }
     }
     if (!res.ok) return null
     const data = (await res.json()) as {
       users?: PresenceUser[]
       count?: number
-      selfKey?: string
+      selfDeviceId?: string
     }
     return {
       users: data.users ?? [],
       count: data.count ?? 0,
       configured: true,
-      selfKey: data.selfKey ?? null,
+      selfDeviceId: data.selfDeviceId ?? body.deviceId,
     }
   } catch {
     return null
@@ -126,22 +145,24 @@ async function heartbeat(body: {
 }
 
 /**
- * Provider: heartbeat + dialog tên.
- * Danh tính online = hash IP phía server (client không đổi được).
+ * Provider: mỗi thiết bị 1 slot online; networkTag = hash IP (server).
+ * Nhiều máy cùng WiFi vẫn hiện đủ nhiều người.
  */
 export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  // SSR + first client paint: luôn EMPTY — localStorage chỉ load sau mount
   const [mounted, setMounted] = React.useState(false)
+  const [deviceId, setDeviceId] = React.useState("")
   const [profile, setProfile] = React.useState<Profile>(EMPTY_PROFILE)
   const [users, setUsers] = React.useState<PresenceUser[]>([])
   const [configured, setConfigured] = React.useState<boolean | null>(null)
-  const [selfKey, setSelfKey] = React.useState<string | null>(null)
+  const [selfDeviceId, setSelfDeviceId] = React.useState<string | null>(null)
   const [nameOpen, setNameOpen] = React.useState(false)
   const [nameDraft, setNameDraft] = React.useState("")
 
   React.useEffect(() => {
     setMounted(true)
+    const id = loadOrCreateDeviceId()
+    setDeviceId(id)
     const stored = loadProfile()
     setProfile(stored)
     setNameDraft(stored.displayName)
@@ -161,22 +182,23 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   }, [profile.displayName])
 
   const tick = React.useCallback(async () => {
-    if (!profile.ready) return
+    if (!profile.ready || !deviceId) return
     const result = await heartbeat({
+      deviceId,
       displayName: profile.anonymous ? "Ẩn danh" : profile.displayName,
       anonymous: profile.anonymous,
       path: pathname || "/",
     })
     if (!result) return
     setConfigured(result.configured)
-    setSelfKey(result.selfKey)
+    setSelfDeviceId(result.selfDeviceId)
     if (result.configured) {
-      // isSelf đã set server-side theo IP
       setUsers(result.users)
     } else {
       setUsers([
         {
-          clientKey: "local",
+          deviceId,
+          networkKey: "local",
           networkTag: "LOC",
           displayName: profile.anonymous
             ? "Ẩn danh"
@@ -187,19 +209,24 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
         },
       ])
     }
-  }, [profile, pathname])
+  }, [profile, pathname, deviceId])
 
   React.useEffect(() => {
-    if (!profile.ready) return
+    if (!profile.ready || !deviceId) return
     void tick()
     const id = window.setInterval(() => void tick(), HEARTBEAT_MS)
     const onFocus = () => void tick()
     window.addEventListener("focus", onFocus)
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void tick()
+    })
 
     const leave = () => {
       try {
-        // Server xóa theo IP của request — không gửi id client
-        void fetch("/api/presence", { method: "DELETE", keepalive: true })
+        void fetch(
+          `/api/presence?deviceId=${encodeURIComponent(deviceId)}`,
+          { method: "DELETE", keepalive: true }
+        )
       } catch {
         // ignore
       }
@@ -211,7 +238,7 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("focus", onFocus)
       window.removeEventListener("pagehide", leave)
     }
-  }, [profile.ready, tick])
+  }, [profile.ready, tick, deviceId])
 
   const saveName = (anonymous: boolean) => {
     const name = nameDraft.trim()
@@ -229,13 +256,13 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
       users,
       count: users.length,
       configured,
-      selfKey,
+      selfDeviceId,
       profile,
       openNameDialog,
       ready: profile.ready,
       mounted,
     }),
-    [users, configured, selfKey, profile, openNameDialog, mounted]
+    [users, configured, selfDeviceId, profile, openNameDialog, mounted]
   )
 
   return (
@@ -249,9 +276,8 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
                 Tên hiển thị
               </DialogTitle>
               <DialogDescription>
-                Tên có thể đổi. Mỗi người được phân biệt theo{" "}
-                <strong>địa chỉ mạng</strong> (IP) — không thể giả mạo từ
-                trình duyệt. Nhiều tab cùng mạng chỉ tính 1 người.
+                Mỗi thiết bị hiện một người riêng (kể cả cùng WiFi). Tên có
+                thể đổi; mã mạng do server gán theo IP.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">
@@ -312,29 +338,32 @@ export function usePresence() {
   return React.useContext(PresenceContext)
 }
 
-/** true khi đã mount + user đã chọn tên / ẩn danh */
 export function usePresenceReady(): boolean {
   const ctx = React.useContext(PresenceContext)
   return Boolean(ctx?.mounted && ctx?.ready)
 }
 
-/** Đọc localStorage — dùng ngoài React nếu cần */
 export function isPresenceProfileReady(): boolean {
   return loadProfile().ready
 }
 
 /**
- * Chip gọn — cùng hàng header.
- * Avatar / màu theo clientKey (hash IP) — cố định theo mạng.
+ * Chip header: số người + avatar tất cả thiết bị online.
  */
 export function PresenceHeaderControl({ className }: { className?: string }) {
   const ctx = usePresence()
   if (!ctx) return null
 
-  const { users, count, configured, openNameDialog, ready, selfKey, mounted } =
-    ctx
+  const {
+    users,
+    count,
+    configured,
+    openNameDialog,
+    ready,
+    selfDeviceId,
+    mounted,
+  } = ctx
 
-  // Trước mount: markup cố định giống SSR — không đọc localStorage / users
   if (!mounted) {
     return (
       <Button
@@ -360,7 +389,6 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
   const extra = Math.max(0, count - MAX_AVATARS)
   const displayCount = count > 0 ? count : ready ? 1 : 0
   const countLabel = displayCount > 0 ? String(displayCount) : "—"
-  const myTag = selfKey ? selfKey.slice(-4).toUpperCase() : null
 
   return (
     <Tooltip>
@@ -386,18 +414,19 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
         {shown.length > 0 ? (
           <AvatarGroup className="ml-0.5">
             {shown.map((u) => {
-              // Màu cố định theo mạng (clientKey), không theo tên đổi được
-              const color = getPersonColor(u.clientKey)
+              // Màu theo thiết bị (mỗi máy khác nhau)
+              const color = getPersonColor(u.deviceId)
               const initials = u.anonymous
                 ? u.networkTag.slice(0, 2)
                 : getInitials(u.displayName) || u.networkTag.slice(0, 2)
               return (
-                <Avatar key={u.clientKey} size="sm">
+                <Avatar key={u.deviceId} size="sm">
                   <AvatarFallback
                     className={cn(
                       "text-[10px] font-semibold",
                       color.bg,
-                      color.text
+                      color.text,
+                      u.isSelf && "ring-2 ring-primary ring-offset-1"
                     )}
                   >
                     {initials}
@@ -414,21 +443,21 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
         ) : null}
         <Pencil className="size-3 opacity-50" />
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-[260px]">
+      <TooltipContent side="bottom" className="max-w-[280px]">
         <p className="font-medium">
-          {displayCount > 0 ? displayCount : "—"} người đang xem
+          {displayCount > 0 ? displayCount : "—"} thiết bị đang xem
           {configured === false ? " (chỉ máy này)" : ""}
         </p>
         {users.length > 0 ? (
-          <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-            {users.slice(0, 8).map((u) => (
-              <li key={u.clientKey} className="flex items-center gap-1.5">
+          <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto text-xs text-muted-foreground">
+            {users.map((u) => (
+              <li key={u.deviceId} className="flex items-center gap-1.5">
                 <span className="font-mono text-[10px] tabular-nums text-foreground/70">
                   #{u.networkTag}
                 </span>
-                <span>
+                <span className="min-w-0 truncate">
                   {u.anonymous ? "Ẩn danh" : u.displayName}
-                  {u.isSelf ? " · bạn" : ""}
+                  {u.isSelf || u.deviceId === selfDeviceId ? " · bạn" : ""}
                 </span>
               </li>
             ))}
@@ -439,8 +468,8 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
           </p>
         )}
         <p className="mt-1.5 text-[11px] text-muted-foreground">
-          Phân biệt theo địa chỉ mạng (không đổi được)
-          {myTag ? ` · bạn #${myTag}` : ""}. Bấm để đổi tên hiển thị.
+          Mỗi thiết bị = 1 người. Mã #xxxx = mạng (IP). Cùng WiFi vẫn thấy
+          đủ mọi máy. Bấm để đổi tên.
         </p>
       </TooltipContent>
     </Tooltip>

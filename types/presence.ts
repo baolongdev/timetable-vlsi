@@ -1,15 +1,17 @@
 export type PresenceUser = {
+  /** ID thiết bị/trình duyệt (mỗi máy một cái — thấy đủ nhiều người) */
+  deviceId: string
   /**
-   * Khóa cố định theo địa chỉ mạng (hash IP phía server).
-   * Client không thể tự đặt / đổi.
+   * Hash IP do server gán — client không đổi được.
+   * Cùng WiFi → cùng networkKey.
    */
-  clientKey: string
-  /** Mã ngắn hiển thị (4 ký tự) — gắn mạng, không đổi */
+  networkKey: string
+  /** Mã ngắn 4 ký tự từ networkKey */
   networkTag: string
   displayName: string
   anonymous: boolean
   path?: string
   lastSeen: number
-  /** true = cùng IP với trình duyệt hiện tại */
+  /** true = đúng thiết bị đang xem */
   isSelf?: boolean
 }

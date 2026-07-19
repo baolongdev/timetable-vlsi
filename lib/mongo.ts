@@ -30,11 +30,16 @@ export type SyncMetaDoc = {
   lecturersAt: number
 }
 
-/** Presence — 1 doc / địa chỉ mạng (IP hash), client không đổi được identity */
+/**
+ * Presence — 1 doc / thiết bị (deviceId).
+ * networkKey = hash IP (server gán) để biết cùng mạng, không gộp người.
+ */
 export type PresenceDoc = {
-  /** = clientKey = hash(IP) */
+  /** = deviceId */
   _id: string
-  clientKey: string
+  deviceId: string
+  /** hash IP — không tin client */
+  networkKey: string
   displayName: string
   anonymous: boolean
   path?: string
