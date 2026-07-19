@@ -54,13 +54,17 @@ function filterVisibleSteps(steps: DriveStep[]): DriveStep[] {
   })
 }
 
+/** Text hiện: github.com — click → github.com/baolongdev */
 const GH_LINK =
-  '<a class="driver-credit-link" href="https://github.com/baolongdev" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:500">github.com/baolongdev</a>'
+  '<a class="driver-credit-link" href="https://github.com/baolongdev" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:500">github.com</a>'
 
-/** Credit ACLAB TEAM trước, tên dev + GitHub khi đọc chi tiết */
+/** Hover vào «phát triển bởi…» → tooltip Lê Bảo Long (title HTML) */
+const DEV_BY =
+  'phát triển bởi <span class="driver-credit-dev" title="Lê Bảo Long" style="cursor:help;border-bottom:1px dotted currentColor;text-underline-offset:3px">…</span>'
+
+/** ACLAB TEAM · phát triển bởi… (hover = Lê Bảo Long) · github.com */
 const CREDIT = desc(
-  `<strong>ACLAB TEAM</strong> · phát triển bởi <strong>Lê Bảo Long</strong>`,
-  GH_LINK
+  `<strong>ACLAB TEAM</strong> · ${DEV_BY} · ${GH_LINK}`
 )
 
 /* ──────────────────────────── Home ──────────────────────────── */
@@ -405,7 +409,7 @@ function buildTimetableSteps(): DriveStep[] {
         description: desc(
           "Thử: tìm môn → lọc GV → bấm card phân công → mở «Trùng lịch» nếu có cảnh báo.",
           "Chúc bạn dùng VLSI Timetable hiệu quả.",
-          `<strong>ACLAB TEAM</strong> · <strong>Lê Bảo Long</strong> · ${GH_LINK}`
+          CREDIT
         ),
         align: "center",
       },

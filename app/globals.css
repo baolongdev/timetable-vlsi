@@ -174,6 +174,13 @@
   .dark .driver-popover-description a:hover {
     color: oklch(0.88 0.1 230) !important;
   }
+  /* «phát triển bởi…» — hover browser tooltip: Lê Bảo Long */
+  .driver-popover .driver-credit-dev {
+    cursor: help;
+    border-bottom: 1px dotted currentColor;
+    color: var(--foreground) !important;
+    font-weight: 500;
+  }
   .driver-popover-next-btn,
   .driver-popover-prev-btn,
   .driver-popover-close-btn,
