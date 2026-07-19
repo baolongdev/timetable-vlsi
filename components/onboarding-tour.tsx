@@ -54,8 +54,13 @@ function filterVisibleSteps(steps: DriveStep[]): DriveStep[] {
   })
 }
 
+const GH_LINK =
+  '<a class="driver-credit-link" href="https://github.com/baolongdev" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:500">github.com/baolongdev</a>'
+
+/** Credit ACLAB TEAM trước, tên dev + GitHub khi đọc chi tiết */
 const CREDIT = desc(
-  'Do <strong>Lê Bảo Long</strong> phát triển · <a class="driver-credit-link" href="https://github.com/baolongdev" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:500">github.com/baolongdev</a>'
+  `<strong>ACLAB TEAM</strong> · phát triển bởi <strong>Lê Bảo Long</strong>`,
+  GH_LINK
 )
 
 /* ──────────────────────────── Home ──────────────────────────── */
@@ -64,10 +69,11 @@ function buildHomeSteps(): DriveStep[] {
   return [
     {
       popover: {
-        title: "Chào mừng đến VLSI Timetable",
+        title: "Chào mừng — VLSI Timetable",
         description: desc(
-          "Đây là trang chủ — menu điều hướng nhanh tới các khu vực chính của ứng dụng.",
-          "Di chuột (hoặc chạm) vào từng hàng để xem hiệu ứng marquee, rồi bấm để vào trang tương ứng.",
+          "<strong>ACLAB TEAM</strong> · Thời khóa biểu học kỳ Tổ VLSI.",
+          "Trang chủ: chọn nhanh Khoa, Timetable, Môn học hoặc Giảng viên.",
+          "Di chuột (hoặc chạm) vào từng hàng menu, rồi bấm để vào trang.",
           CREDIT
         ),
         align: "center",
@@ -203,10 +209,10 @@ function buildTimetableSteps(): DriveStep[] {
   return [
     {
       popover: {
-        title: "Chào mừng đến VLSI Timetable",
+        title: "Chào mừng — VLSI Timetable",
         description: desc(
-          "Trang thời khóa biểu: xem lịch, lọc, phân công cán bộ và theo dõi cảnh báo trùng lịch.",
-          "<strong>Nội dung tour:</strong> điều hướng · tìm & lọc · lưới lịch · trùng lịch · import · phím tắt.",
+          "<strong>ACLAB TEAM</strong> · Thời khóa biểu: xem lịch, lọc, phân công cán bộ và theo dõi cảnh báo trùng lịch.",
+          "<strong>Tour này gồm:</strong> điều hướng · tìm &amp; lọc · lưới lịch · trùng lịch · import · phím tắt.",
           CREDIT
         ),
         align: "center",
@@ -398,7 +404,8 @@ function buildTimetableSteps(): DriveStep[] {
         title: "Bạn đã sẵn sàng",
         description: desc(
           "Thử: tìm môn → lọc GV → bấm card phân công → mở «Trùng lịch» nếu có cảnh báo.",
-          "Chúc bạn dùng VLSI Timetable hiệu quả — <strong>Lê Bảo Long</strong>"
+          "Chúc bạn dùng VLSI Timetable hiệu quả.",
+          `<strong>ACLAB TEAM</strong> · <strong>Lê Bảo Long</strong> · ${GH_LINK}`
         ),
         align: "center",
       },
