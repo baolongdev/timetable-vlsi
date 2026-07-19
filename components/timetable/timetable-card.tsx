@@ -10,8 +10,7 @@ import {
   MapPin,
   MoreHorizontal,
   Pencil,
-  UserCog,
-} from "lucide-react"
+  } from "lucide-react"
 
 import { getPeriodRangeLabel } from "@/data/timetable"
 import { getLecturerColor } from "@/lib/lecturer-colors"
@@ -160,10 +159,9 @@ export function TimetableCard({
 
   const codeGroupLabel = `${schedule.courseCode} · ${schedule.className}`
   const weeksLabel = `Tuần ${schedule.weeks}`
-  const leadTeacherLabel = [schedule.lead, schedule.teacher]
-    .filter(Boolean)
-    .map((n) => formatLecturerWithStaffId(n as string))
-    .join(" · ")
+  const teacherLabel = schedule.teacher
+    ? formatLecturerWithStaffId(schedule.teacher)
+    : formatLecturerWithStaffId(schedule.lecturer)
 
   const setHover = (active: boolean) => {
     if (canExpand) setExpanded(active)
@@ -363,9 +361,9 @@ export function TimetableCard({
               </InfoTooltip>
               <InfoTooltip
                 label={
-                  leadTeacherLabel
-                    ? `Giảng viên: ${leadTeacherLabel}`
-                    : formatLecturerWithStaffId(schedule.lecturer)
+                  schedule.lecturer !== "Chưa phân công"
+                    ? `CB giảng dạy: ${teacherLabel}`
+                    : "Chưa phân công CB giảng dạy"
                 }
               >
                 <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
@@ -394,13 +392,6 @@ export function TimetableCard({
                   </span>
                 </span>
               </InfoTooltip>
-              {isExpanded ? (
-                <PersonLine
-                  icon={UserCog}
-                  label="Cán bộ phụ trách"
-                  name={schedule.lead}
-                />
-              ) : null}
             </>
           )}
 
@@ -427,14 +418,9 @@ export function TimetableCard({
 
               <div className="mt-0.5 flex flex-col items-start gap-1">
                 <PersonLine
-                  icon={UserCog}
-                  label="Cán bộ phụ trách"
-                  name={schedule.lead}
-                />
-                <PersonLine
                   icon={GraduationCap}
                   label="Cán bộ giảng dạy"
-                  name={schedule.teacher}
+                  name={schedule.teacher || schedule.lecturer}
                 />
                 <InfoTooltip label={`Phòng: ${schedule.room}`}>
                   <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">

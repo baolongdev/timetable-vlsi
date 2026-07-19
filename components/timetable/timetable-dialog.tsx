@@ -38,8 +38,8 @@ type TimetableDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onLecturerChange?: (scheduleId: string, lecturer: string) => void
-  assignment?: { lead?: string; teacher?: string }
-  onAssignmentChange?: (patch: { lead?: string; teacher?: string }) => void
+  assignment?: { teacher?: string }
+  onAssignmentChange?: (patch: { teacher?: string }) => void
   /** Các dòng cảnh báo trùng lịch của nhóm này */
   conflictMessages?: string[]
 }
@@ -222,24 +222,12 @@ export function TimetableDialog({
               {canAssign ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    Phân công cho nhóm{" "}
+                    Phân công CB giảng dạy cho nhóm{" "}
                     <span className="font-mono font-medium text-foreground">
                       {schedule.className}
                     </span>
+                    . Trùng lịch chỉ xét người này + phòng.
                   </p>
-                  <div className="flex flex-col gap-1.5">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Cán bộ phụ trách
-                    </span>
-                    <LecturerPicker
-                      value={assignment?.lead ?? null}
-                      onValueChange={(value) =>
-                        onAssignmentChange?.({ lead: value ?? undefined })
-                      }
-                      placeholder="Chọn cán bộ phụ trách…"
-                      className="h-10 rounded-xl"
-                    />
-                  </div>
                   <div className="flex flex-col gap-1.5">
                     <span className="text-xs font-medium text-muted-foreground">
                       Cán bộ giảng dạy

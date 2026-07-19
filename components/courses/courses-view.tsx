@@ -98,8 +98,8 @@ export function CoursesView() {
 
   const effectiveCourses = React.useMemo<Course[]>(() => {
     if (!dept) return []
-    // Gom môn từ file: mỗi MMH một dòng; phụ trách = lead được chọn nhiều nhất
-    const byCode = new Map<string, Course & { _leads: string[] }>()
+    // Gom môn từ file: mỗi MMH một dòng; CB giảng dạy = teacher
+    const byCode = new Map<string, Course & { _teachers: string[] }>()
     for (const s of dept.sections) {
       const a = getEffectiveAssignment(dept, s)
       let entry = byCode.get(s.code)
@@ -111,17 +111,21 @@ export function CoursesView() {
           leadLecturer: undefined,
           theoryLecturers: [],
           practiceLecturers: [],
-          _leads: [],
+          _teachers: [],
         }
         byCode.set(s.code, entry)
       }
-      if (a.lead) entry._leads.push(a.lead)
-      if (a.teacher && !entry.theoryLecturers.includes(a.teacher))
+      if (a.teacher && !entry._teachers.includes(a.teacher)) {
+        entry._teachers.push(a.teacher)
+      }
+      if (a.teacher && !entry.theoryLecturers.includes(a.teacher)) {
         entry.theoryLecturers.push(a.teacher)
+      }
     }
-    return [...byCode.values()].map(({ _leads, ...c }) => ({
+    return [...byCode.values()].map(({ _teachers, ...c }) => ({
       ...c,
-      leadLecturer: _leads[0],
+      // Cột “Giảng dạy”: người dạy đầu tiên (không còn phụ trách)
+      leadLecturer: _teachers[0],
     }))
   }, [dept])
 
@@ -340,7 +344,7 @@ export function CoursesView() {
                   Nhóm lớp
                 </TableHead>
                 <TableHead className="sticky top-0 z-20 min-w-[140px] border-b bg-background">
-                  Phụ trách
+                  CB giảng dạy
                 </TableHead>
                 <TableHead className="sticky top-0 z-20 hidden min-w-[180px] border-b bg-background lg:table-cell">
                   Lý thuyết
@@ -491,7 +495,7 @@ export function CoursesView() {
                 )
                 return src
                   ? getEffectiveAssignment(dept, src)
-                  : { lead: undefined, teacher: undefined }
+                  : { teacher: undefined }
               }
             : undefined
         }

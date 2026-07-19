@@ -91,14 +91,15 @@ export function TimetableView() {
       .filter((s) => s.endPeriod <= 12)
       .map((s, i) => {
         const a = getEffectiveAssignment(dept, s)
+        const teacher = a.teacher
         return {
           id: `${sectionKey(s)}-${i}`,
           courseCode: s.code,
           courseName: s.courseName,
-          lecturer: a.teacher || a.lead || "Chưa phân công",
-          lead: a.lead,
-          teacher: a.teacher,
+          lecturer: teacher || "Chưa phân công",
+          teacher,
           room: s.room,
+          // Excel: Thứ 2–8 (8=CN) → schedule.day 0–6 (T2–CN)
           day: s.day - 1,
           startPeriod: s.startPeriod,
           endPeriod: s.endPeriod,
@@ -134,7 +135,6 @@ export function TimetableView() {
     const latest = baseSchedules.find((s) => s.id === selected.id)
     if (!latest) return
     if (
-      latest.lead !== selected.lead ||
       latest.teacher !== selected.teacher ||
       latest.lecturer !== selected.lecturer
     ) {

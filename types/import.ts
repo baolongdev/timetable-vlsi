@@ -26,7 +26,9 @@ export type ImportedSection = {
 
 /** Phân công do người dùng chọn trên UI, key = `${code}-${group}` */
 export type Assignment = {
+  /** @deprecated Không dùng CB phụ trách */
   lead?: string
+  /** Cán bộ giảng dạy */
   teacher?: string
 }
 

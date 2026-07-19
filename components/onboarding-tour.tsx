@@ -417,7 +417,7 @@ function buildCoursesSteps(): DriveStep[] {
       popover: {
         title: "Trang Môn học",
         description: desc(
-          "Danh sách môn học theo khoa: mã môn, tên, số nhóm lớp, phụ trách / lý thuyết / thực hành.",
+          "Danh sách môn học theo khoa: mã môn, tên, số nhóm lớp, CB giảng dạy.",
           "Dữ liệu lấy từ file Excel đã import của khoa đang chọn."
         ),
         align: "center",
@@ -461,7 +461,7 @@ function buildCoursesSteps(): DriveStep[] {
       popover: {
         title: "Lọc theo giảng viên",
         description: desc(
-          "Chỉ hiện môn có người này trong phụ trách / LT / TH. Danh sách nhóm theo vai trò, có MSCB."
+          "Chỉ hiện môn có CB giảng dạy trùng tên. Danh sách nhóm theo vai trò, có MSCB."
         ),
         side: "bottom",
         align: "start",
@@ -473,7 +473,7 @@ function buildCoursesSteps(): DriveStep[] {
         title: "Bảng môn học",
         description: desc(
           "Mỗi dòng một môn. Cột <strong>Nhóm lớp</strong>: bấm số nhóm để mở dialog chi tiết section.",
-          "Trong dialog bạn xem lịch từng nhóm và <strong>phân công</strong> lead / giảng viên nếu đã import khoa.",
+          "Trong dialog bạn xem lịch từng nhóm và <strong>phân công CB giảng dạy</strong> nếu đã import khoa.",
           "Cuộn ngang trên màn hẹp để thấy đủ cột Lý thuyết / Thực hành."
         ),
         side: "top",

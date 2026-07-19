@@ -84,12 +84,19 @@ function isValidRoom(room: string | undefined | null): room is string {
   return !UNASSIGNED.has(t.toLowerCase())
 }
 
+/**
+ * Chỉ CB giảng dạy (teacher / lecturer hiển thị).
+ * Không dùng cán bộ phụ trách (lead) — không phân công / không check trùng.
+ */
 function peopleOf(s: Schedule): string[] {
-  const out = new Set<string>()
-  for (const n of [s.teacher, s.lead, s.lecturer]) {
-    if (isAssignedPerson(n)) out.add(n.trim())
-  }
-  return [...out]
+  // Ưu tiên teacher; lecturer là nhãn hiển thị (thường = teacher)
+  const name = s.teacher?.trim() || s.lecturer?.trim()
+  if (isAssignedPerson(name)) return [name]
+  return []
+}
+
+function sameResource(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase()
 }
 
 /** schedule.day = 1…7 (T2…CN) */
@@ -149,9 +156,10 @@ function roomConflictMessage(
 }
 
 /**
- * Tìm trùng lịch:
- * - **lecturer**: cùng người + cùng thứ + giao tiết + giao tuần
+ * Tìm trùng lịch (chỉ CB giảng dạy + phòng):
+ * - **lecturer**: cùng CB giảng dạy + cùng thứ + giao tiết + giao tuần
  * - **room**: cùng phòng + cùng thứ + giao tiết + giao tuần
+ * Không xét cán bộ phụ trách.
  */
 export function findScheduleConflicts(
   schedules: Schedule[]
@@ -159,6 +167,8 @@ export function findScheduleConflicts(
   const conflicts: ScheduleConflict[] = []
   const byScheduleId = new Map<string, ScheduleConflict[]>()
   const conflictIds = new Set<string>()
+  /** Tránh trùng bản ghi (cùng cặp + kind + resource) */
+  const seen = new Set<string>()
 
   const weeksCache = new Map<string, Set<number>>()
   const weeksOf = (s: Schedule) => {
@@ -171,6 +181,11 @@ export function findScheduleConflicts(
   }
 
   const push = (c: ScheduleConflict) => {
+    const pair = [c.aId, c.bId].sort().join("|")
+    const key = `${c.kind}:${c.resource.toLowerCase()}:${pair}`
+    if (seen.has(key)) return
+    seen.add(key)
+
     conflicts.push(c)
     conflictIds.add(c.aId)
     conflictIds.add(c.bId)
@@ -187,13 +202,16 @@ export function findScheduleConflicts(
     const a = schedules[i]
     for (let j = i + 1; j < n; j++) {
       const b = schedules[j]
+      // Cùng thứ + giao tiết
       if (!periodsOverlap(a, b)) continue
+      // Giao tuần học (1–7 vs 9–16 không trùng)
       if (!setsIntersect(weeksOf(a), weeksOf(b))) continue
 
+      // Trùng CB giảng dạy
       const peopleA = peopleOf(a)
-      const peopleB = new Set(peopleOf(b))
+      const peopleB = peopleOf(b)
       for (const person of peopleA) {
-        if (!peopleB.has(person)) continue
+        if (!peopleB.some((p) => sameResource(p, person))) continue
         const { title, message } = lecturerConflictMessage(person, a, b)
         push({
           kind: "lecturer",
@@ -205,10 +223,11 @@ export function findScheduleConflicts(
         })
       }
 
+      // Trùng phòng
       if (
         isValidRoom(a.room) &&
         isValidRoom(b.room) &&
-        a.room.trim() === b.room.trim()
+        sameResource(a.room, b.room)
       ) {
         const room = a.room.trim()
         const { title, message } = roomConflictMessage(room, a, b)

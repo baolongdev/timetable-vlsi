@@ -122,14 +122,9 @@ export function CourseSectionsDialog({
                       NN
                     </TableHead>
                     {assignable ? (
-                      <>
-                        <TableHead className="sticky top-0 z-20 w-[180px] border-b bg-background">
-                          CB phụ trách
-                        </TableHead>
-                        <TableHead className="sticky top-0 z-20 w-[180px] border-b bg-background">
-                          CB giảng dạy
-                        </TableHead>
-                      </>
+                      <TableHead className="sticky top-0 z-20 w-[200px] border-b bg-background">
+                        CB giảng dạy
+                      </TableHead>
                     ) : null}
                   </TableRow>
                 </TableHeader>
@@ -181,30 +176,17 @@ export function CourseSectionsDialog({
                         </Badge>
                       </TableCell>
                       {assignable ? (
-                        <>
-                          <TableCell>
-                            <LecturerPicker
-                              value={getAssignment!(s).lead ?? null}
-                              onValueChange={(value) =>
-                                onAssign!(`${s.code}-${s.group}`, {
-                                  lead: value ?? undefined,
-                                })
-                              }
-                              placeholder="Chọn CB phụ trách…"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <LecturerPicker
-                              value={getAssignment!(s).teacher ?? null}
-                              onValueChange={(value) =>
-                                onAssign!(`${s.code}-${s.group}`, {
-                                  teacher: value ?? undefined,
-                                })
-                              }
-                              placeholder="Chọn CB giảng dạy…"
-                            />
-                          </TableCell>
-                        </>
+                        <TableCell>
+                          <LecturerPicker
+                            value={getAssignment!(s).teacher ?? null}
+                            onValueChange={(value) =>
+                              onAssign!(`${s.code}-${s.group}`, {
+                                teacher: value ?? undefined,
+                              })
+                            }
+                            placeholder="Chọn CB giảng dạy…"
+                          />
+                        </TableCell>
                       ) : null}
                     </TableRow>
                   ))}

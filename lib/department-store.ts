@@ -384,13 +384,13 @@ export const departmentStore = {
     )
     void pushAssignmentRemote(deptId, key, patch)
     if (!opts?.silent) {
-      const parts = [
-        patch.lead !== undefined ? `Phụ trách: ${patch.lead || "—"}` : null,
+      const who =
         patch.teacher !== undefined
-          ? `Giảng dạy: ${patch.teacher || "—"}`
-          : null,
-      ].filter(Boolean)
-      appToast.success("Đã lưu phân công", parts.join(" · ") || deptName)
+          ? patch.teacher
+            ? `CB giảng dạy: ${patch.teacher}`
+            : "Đã bỏ phân công CB giảng dạy"
+          : deptName
+      appToast.success("Đã lưu phân công", who)
     }
   },
 }
@@ -438,14 +438,13 @@ export function useDepartments() {
   }
 }
 
-/** Phân công hiệu lực của một nhóm: người dùng chọn > giá trị trong file */
+/** Phân công hiệu lực: chỉ CB giảng dạy (user chọn > file Excel). Không dùng phụ trách. */
 export function getEffectiveAssignment(
   dept: Department,
   s: ImportedSection
 ): Assignment {
   const chosen = dept.assignments[sectionKey(s)]
   return {
-    lead: chosen?.lead ?? s.lead,
     teacher: chosen?.teacher ?? s.teacher,
   }
 }
