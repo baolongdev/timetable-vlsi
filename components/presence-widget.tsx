@@ -48,9 +48,17 @@ type PresenceContextValue = {
   profile: Profile
   openNameDialog: () => void
   ready: boolean
+  /** false cho đến khi client mount — tránh hydration mismatch */
+  mounted: boolean
 }
 
 const PresenceContext = React.createContext<PresenceContextValue | null>(null)
+
+const EMPTY_PROFILE: Profile = {
+  displayName: "",
+  anonymous: true,
+  ready: false,
+}
 
 function loadProfile(): Profile {
   if (typeof window === "undefined") {
@@ -121,7 +129,9 @@ async function heartbeat(body: {
  */
 export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const [profile, setProfile] = React.useState<Profile>(() => loadProfile())
+  // SSR + first client paint: luôn EMPTY — localStorage chỉ load sau mount
+  const [mounted, setMounted] = React.useState(false)
+  const [profile, setProfile] = React.useState<Profile>(EMPTY_PROFILE)
   const [users, setUsers] = React.useState<PresenceUser[]>([])
   const [configured, setConfigured] = React.useState<boolean | null>(null)
   const [selfKey, setSelfKey] = React.useState<string | null>(null)
@@ -129,11 +139,14 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const [nameDraft, setNameDraft] = React.useState("")
 
   React.useEffect(() => {
-    if (!profile.ready) {
-      setNameDraft(profile.displayName)
+    setMounted(true)
+    const stored = loadProfile()
+    setProfile(stored)
+    setNameDraft(stored.displayName)
+    if (!stored.ready) {
       setNameOpen(true)
     }
-  }, [profile.ready, profile.displayName])
+  }, [])
 
   const applyProfile = React.useCallback((next: Profile) => {
     setProfile(next)
@@ -218,8 +231,9 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
       profile,
       openNameDialog,
       ready: profile.ready,
+      mounted,
     }),
-    [users, configured, selfKey, profile, openNameDialog]
+    [users, configured, selfKey, profile, openNameDialog, mounted]
   )
 
   return (
@@ -304,10 +318,35 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
   const ctx = usePresence()
   if (!ctx) return null
 
-  const { users, count, configured, openNameDialog, ready, selfKey } = ctx
+  const { users, count, configured, openNameDialog, ready, selfKey, mounted } =
+    ctx
+
+  // Trước mount: markup cố định giống SSR — không đọc localStorage / users
+  if (!mounted) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        data-tour="presence"
+        className={cn(
+          "h-8 gap-1.5 px-2 transition-opacity duration-150 hover:opacity-80",
+          className
+        )}
+        disabled
+        aria-label="Người đang xem"
+      >
+        <Users data-icon="inline-start" className="size-3.5 opacity-70" />
+        <span className="tabular-nums">—</span>
+        <span className="hidden sm:inline">đang xem</span>
+      </Button>
+    )
+  }
+
   const shown = users.slice(0, MAX_AVATARS)
   const extra = Math.max(0, count - MAX_AVATARS)
-  const displayCount = Math.max(count, ready ? 1 : 0)
+  const displayCount = count > 0 ? count : ready ? 1 : 0
+  const countLabel = displayCount > 0 ? String(displayCount) : "—"
   const myTag = selfKey ? selfKey.slice(-4).toUpperCase() : null
 
   return (
@@ -329,7 +368,7 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
         }
       >
         <Users data-icon="inline-start" className="size-3.5 opacity-70" />
-        <span className="tabular-nums">{displayCount || "—"}</span>
+        <span className="tabular-nums">{countLabel}</span>
         <span className="hidden sm:inline">đang xem</span>
         {shown.length > 0 ? (
           <AvatarGroup className="ml-0.5">
@@ -364,7 +403,7 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-[260px]">
         <p className="font-medium">
-          {displayCount} người đang xem
+          {displayCount > 0 ? displayCount : "—"} người đang xem
           {configured === false ? " (chỉ máy này)" : ""}
         </p>
         {users.length > 0 ? (
