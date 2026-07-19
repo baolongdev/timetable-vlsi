@@ -14,6 +14,10 @@ import {
 } from "@/components/ui/tooltip"
 import { usePresenceReady } from "@/components/presence-widget"
 import {
+  mountTourCredit,
+  unmountTourCredit,
+} from "@/components/tour-credit"
+import {
   hasCompletedPageTour,
   hasCompletedTourClient,
   markTourCompletedClient,
@@ -54,18 +58,10 @@ function filterVisibleSteps(steps: DriveStep[]): DriveStep[] {
   })
 }
 
-/** Text hiện: github.com — click → github.com/baolongdev */
-const GH_LINK =
-  '<a class="driver-credit-link" href="https://github.com/baolongdev" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:500">github.com</a>'
-
-/** Hover vào «phát triển bởi…» → tooltip Lê Bảo Long (title HTML) */
-const DEV_BY =
-  'phát triển bởi <span class="driver-credit-dev" title="Lê Bảo Long" style="cursor:help;border-bottom:1px dotted currentColor;text-underline-offset:3px">…</span>'
-
-/** ACLAB TEAM · phát triển bởi… (hover = Lê Bảo Long) · github.com */
-const CREDIT = desc(
-  `<strong>ACLAB TEAM</strong> · ${DEV_BY} · ${GH_LINK}`
-)
+/**
+ * Credit (ACLAB TEAM · phát triển bởi… · github.com) gắn bằng React Tooltip
+ * qua mountTourCredit — không nhét HTML title vào description.
+ */
 
 /* ──────────────────────────── Home ──────────────────────────── */
 
@@ -77,8 +73,7 @@ function buildHomeSteps(): DriveStep[] {
         description: desc(
           "<strong>ACLAB TEAM</strong> · Thời khóa biểu học kỳ Tổ VLSI.",
           "Trang chủ: chọn nhanh Khoa, Timetable, Môn học hoặc Giảng viên.",
-          "Di chuột (hoặc chạm) vào từng hàng menu, rồi bấm để vào trang.",
-          CREDIT
+          "Di chuột (hoặc chạm) vào từng hàng menu, rồi bấm để vào trang."
         ),
         align: "center",
       },
@@ -131,8 +126,7 @@ function buildDepartmentsSteps(): DriveStep[] {
         title: "Trang Khoa / Tổ chuyên môn",
         description: desc(
           "Đây là nơi quản lý các khoa đã import từ file Excel phân công giảng dạy.",
-          "Mỗi sheet hợp lệ trong file (CNPM, KTMT…) sẽ thành một khoa riêng trên danh sách.",
-          CREDIT
+          "Mỗi sheet hợp lệ trong file (CNPM, KTMT…) sẽ thành một khoa riêng trên danh sách."
         ),
         align: "center",
       },
@@ -216,8 +210,7 @@ function buildTimetableSteps(): DriveStep[] {
         title: "Chào mừng — VLSI Timetable",
         description: desc(
           "<strong>ACLAB TEAM</strong> · Thời khóa biểu: xem lịch, lọc, phân công cán bộ và theo dõi cảnh báo trùng lịch.",
-          "<strong>Tour này gồm:</strong> điều hướng · tìm &amp; lọc · lưới lịch · trùng lịch · import · phím tắt.",
-          CREDIT
+          "<strong>Tour này gồm:</strong> điều hướng · tìm &amp; lọc · lưới lịch · trùng lịch · import · phím tắt."
         ),
         align: "center",
       },
@@ -408,8 +401,7 @@ function buildTimetableSteps(): DriveStep[] {
         title: "Bạn đã sẵn sàng",
         description: desc(
           "Thử: tìm môn → lọc GV → bấm card phân công → mở «Trùng lịch» nếu có cảnh báo.",
-          "Chúc bạn dùng VLSI Timetable hiệu quả.",
-          CREDIT
+          "Chúc bạn dùng VLSI Timetable hiệu quả."
         ),
         align: "center",
       },
@@ -426,8 +418,7 @@ function buildCoursesSteps(): DriveStep[] {
         title: "Trang Môn học",
         description: desc(
           "Danh sách môn học theo khoa: mã môn, tên, số nhóm lớp, phụ trách / lý thuyết / thực hành.",
-          "Dữ liệu lấy từ file Excel đã import của khoa đang chọn.",
-          CREDIT
+          "Dữ liệu lấy từ file Excel đã import của khoa đang chọn."
         ),
         align: "center",
       },
@@ -521,8 +512,7 @@ function buildLecturersSteps(): DriveStep[] {
         title: "Trang Giảng viên",
         description: desc(
           "Quản lý danh sách cán bộ / giảng viên: MSCB, họ tên, vai trò, email, điện thoại.",
-          "Danh sách này hỗ trợ lọc trên thời khóa biểu và phân công nhóm lớp.",
-          CREDIT
+          "Danh sách này hỗ trợ lọc trên thời khóa biểu và phân công nhóm lớp."
         ),
         align: "center",
       },
@@ -671,6 +661,7 @@ export function startOnboardingTour(options?: {
     animate: true,
     allowClose: isReplay,
     overlayClickBehavior: isReplay ? "close" : () => {},
+    // Lần đầu: không tương tác UI bên dưới — credit/tooltip vẫn hover được trong popover
     disableActiveInteraction: !isReplay,
     overlayOpacity: 0.55,
     stagePadding: 8,
@@ -680,6 +671,10 @@ export function startOnboardingTour(options?: {
     doneBtnText: "Xong",
     progressText: "{{current}} / {{total}}",
     steps,
+    onPopoverRender: (popover) => {
+      // Tooltip shadcn (Base UI) cho «phát triển bởi…» → Lê Bảo Long
+      mountTourCredit(popover.description)
+    },
     onCloseClick: isReplay
       ? undefined
       : (_el, _step, { config, state }) => {
@@ -689,6 +684,7 @@ export function startOnboardingTour(options?: {
           void state
         },
     onDestroyed: () => {
+      unmountTourCredit()
       if (!isReplay) {
         window.removeEventListener("keydown", blockEscape, true)
       }
