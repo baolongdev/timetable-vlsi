@@ -19,13 +19,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { getInitials, getPersonColor } from "@/lib/person-color"
 import { cn } from "@/lib/utils"
 import type { PresenceUser } from "@/types/presence"
@@ -358,7 +361,7 @@ export function isPresenceProfileReady(): boolean {
 }
 
 /**
- * Chip header: số người + avatar tất cả thiết bị online.
+ * Chip header: bấm → danh sách người đang xem; «Đổi tên» mở form tên.
  */
 export function PresenceHeaderControl({ className }: { className?: string }) {
   const ctx = usePresence()
@@ -389,8 +392,8 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
         aria-label="Người đang xem"
       >
         <Users data-icon="inline-start" className="size-3.5 opacity-70" />
-        <span className="tabular-nums">—</span>
-        <span className="hidden sm:inline">đang xem</span>
+        <span className="font-medium tracking-tight">{PRESENCE_TEAM_LABEL}</span>
+        <span className="tabular-nums text-muted-foreground">—</span>
       </Button>
     )
   }
@@ -401,8 +404,8 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
   const countLabel = displayCount > 0 ? String(displayCount) : "—"
 
   return (
-    <Tooltip>
-      <TooltipTrigger
+    <DropdownMenu>
+      <DropdownMenuTrigger
         render={
           <Button
             type="button"
@@ -413,14 +416,12 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
               "h-8 gap-1.5 px-2 transition-opacity duration-150 hover:opacity-80",
               className
             )}
-            onClick={openNameDialog}
-            aria-label={`${PRESENCE_TEAM_LABEL} — người đang xem`}
+            aria-label={`${PRESENCE_TEAM_LABEL} — bấm xem người đang online`}
           />
         }
       >
         <Users data-icon="inline-start" className="size-3.5 opacity-70" />
-        {/* Team luôn hiện trước; tên cá nhân chỉ trong tooltip hover */}
-        <span className="max-w-[7.5rem] truncate font-medium tracking-tight sm:max-w-none">
+        <span className="max-w-[6.5rem] truncate font-medium tracking-tight sm:max-w-none">
           {PRESENCE_TEAM_LABEL}
         </span>
         <span className="tabular-nums text-muted-foreground">{countLabel}</span>
@@ -428,7 +429,6 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
           <AvatarGroup className="ml-0.5">
             {shown.map((u) => {
               const color = getPersonColor(u.deviceId)
-              // Avatar: AT (team) hoặc chữ cái tên cá nhân
               const person = personalLabel(u)
               const initials = u.anonymous
                 ? "AT"
@@ -455,51 +455,90 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
             ) : null}
           </AvatarGroup>
         ) : null}
-        <Pencil className="size-3 opacity-50" />
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-[300px]">
-        <p className="font-semibold tracking-tight text-foreground">
-          {PRESENCE_TEAM_LABEL}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {displayCount > 0 ? displayCount : "—"} thiết bị đang xem
-          {configured === false ? " (chỉ máy này)" : ""}
-        </p>
-        {users.length > 0 ? (
-          <ul className="mt-2 max-h-44 space-y-1 overflow-y-auto border-t border-border/60 pt-2 text-xs">
-            {users.map((u) => {
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="end"
+        sideOffset={6}
+        className="w-[min(calc(100vw-2rem),18rem)] min-w-[16rem] p-0"
+      >
+        <div className="px-3 py-2.5">
+          <p className="text-sm font-semibold tracking-tight">
+            {PRESENCE_TEAM_LABEL}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {countLabel} đang xem
+            {configured === false ? " · chỉ máy này" : ""}
+          </p>
+        </div>
+        <DropdownMenuSeparator className="my-0" />
+
+        <div className="scrollbar-minimal max-h-52 overflow-y-auto py-1">
+          {users.length > 0 ? (
+            users.map((u) => {
               const person = personalLabel(u)
               const isYou = u.isSelf || u.deviceId === selfDeviceId
+              const color = getPersonColor(u.deviceId)
+              const initials = u.anonymous
+                ? "AT"
+                : getInitials(person) || "AT"
               return (
-                <li
+                <div
                   key={u.deviceId}
-                  className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-1.5"
+                  className="flex items-center gap-2.5 px-3 py-2"
                 >
-                  <span className="shrink-0 font-medium text-foreground">
-                    {PRESENCE_TEAM_LABEL}
-                  </span>
-                  <span className="min-w-0 truncate text-muted-foreground">
-                    · {person}
-                    {isYou ? " · bạn" : ""}
-                    <span className="ml-1 font-mono text-[10px] tabular-nums opacity-70">
-                      #{u.networkTag}
-                    </span>
-                  </span>
-                </li>
+                  <Avatar size="sm" className="shrink-0">
+                    <AvatarFallback
+                      className={cn(
+                        "text-[10px] font-semibold",
+                        color.bg,
+                        color.text
+                      )}
+                    >
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium leading-tight">
+                      {person}
+                      {isYou ? (
+                        <span className="ml-1 text-xs font-normal text-muted-foreground">
+                          (bạn)
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {PRESENCE_TEAM_LABEL}
+                      <span className="ml-1 font-mono tabular-nums opacity-80">
+                        #{u.networkTag}
+                      </span>
+                    </p>
+                  </div>
+                </div>
               )
-            })}
-          </ul>
-        ) : (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Chọn tên cá nhân hoặc ẩn danh
-          </p>
-        )}
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          Bên ngoài: {PRESENCE_TEAM_LABEL}. Hover: tên từng người. Bấm để
-          đổi tên cá nhân.
-        </p>
-      </TooltipContent>
-    </Tooltip>
+            })
+          ) : (
+            <p className="px-3 py-3 text-xs text-muted-foreground">
+              Chưa có ai online. Chọn tên hoặc ẩn danh để hiện mặt.
+            </p>
+          )}
+        </div>
+
+        <DropdownMenuSeparator className="my-0" />
+        <div className="p-1">
+          <DropdownMenuItem
+            className="cursor-pointer gap-2 rounded-lg px-2.5 py-2"
+            onClick={() => {
+              // Đợi menu đóng rồi mở dialog tên
+              window.setTimeout(() => openNameDialog(), 50)
+            }}
+          >
+            <Pencil className="size-3.5 opacity-70" />
+            Đổi tên cá nhân
+          </DropdownMenuItem>
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
