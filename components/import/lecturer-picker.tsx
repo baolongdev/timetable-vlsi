@@ -25,7 +25,7 @@ type LecturerPickerProps = {
 export function LecturerPicker({
   value,
   onValueChange,
-  placeholder = "Chọn cán bộ…",
+  placeholder = "Chọn giảng viên…",
   className,
 }: LecturerPickerProps) {
   return (

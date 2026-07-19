@@ -92,7 +92,7 @@ function LecturerSingleSelect({
     >
       <ComboboxInput
         id={id}
-        placeholder="Tìm giảng viên…"
+        placeholder="Chọn giảng viên phụ trách…"
         showClear
         className="h-10 w-full rounded-xl"
       />
@@ -245,7 +245,9 @@ export function CourseFormDialog({
                   value={theoryLecturers}
                   onValueChange={setTheoryLecturers}
                   placeholder={
-                    theoryLecturers.length === 0 ? "Chọn giảng viên…" : ""
+                    theoryLecturers.length === 0
+                      ? "Chọn giảng viên lý thuyết…"
+                      : "Thêm giảng viên…"
                   }
                 />
               </div>
@@ -257,7 +259,9 @@ export function CourseFormDialog({
                   value={practiceLecturers}
                   onValueChange={setPracticeLecturers}
                   placeholder={
-                    practiceLecturers.length === 0 ? "Chọn trợ giảng…" : ""
+                    practiceLecturers.length === 0
+                      ? "Chọn trợ giảng / thực hành…"
+                      : "Thêm trợ giảng…"
                   }
                 />
               </div>

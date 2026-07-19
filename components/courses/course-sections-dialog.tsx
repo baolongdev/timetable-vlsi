@@ -173,7 +173,7 @@ export function CourseSectionsDialog({
                                   lead: value ?? undefined,
                                 })
                               }
-                              placeholder="Chọn…"
+                              placeholder="Chọn CB phụ trách…"
                             />
                           </TableCell>
                           <TableCell>
@@ -184,7 +184,7 @@ export function CourseSectionsDialog({
                                   teacher: value ?? undefined,
                                 })
                               }
-                              placeholder="Chọn…"
+                              placeholder="Chọn CB giảng dạy…"
                             />
                           </TableCell>
                         </>
