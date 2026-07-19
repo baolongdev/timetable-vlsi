@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { ContentProtection } from "@/components/content-protection"
 import { HelpDialog } from "@/components/help-dialog"
 import { OnboardingTour } from "@/components/onboarding-tour"
+import { PresenceWidget } from "@/components/presence-widget"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -96,6 +97,7 @@ export default function RootLayout({
             {children}
             <HelpDialog />
             <OnboardingTour />
+            <PresenceWidget />
             <Toaster />
           </TooltipProvider>
         </ThemeProvider>

@@ -30,6 +30,16 @@ export type SyncMetaDoc = {
   lecturersAt: number
 }
 
+/** Presence — ai đang online trên web (heartbeat) */
+export type PresenceDoc = {
+  _id: string
+  sessionId: string
+  displayName: string
+  anonymous: boolean
+  path?: string
+  lastSeen: number
+}
+
 const DEFAULT_DB = "timetable-vlsi"
 
 type MongoGlobal = {
@@ -84,6 +94,11 @@ export async function lecturersCol(): Promise<Collection<LecturerDoc>> {
 export async function syncMetaCol(): Promise<Collection<SyncMetaDoc>> {
   const db = await getMongoDb()
   return db.collection<SyncMetaDoc>("sync_meta")
+}
+
+export async function presenceCol(): Promise<Collection<PresenceDoc>> {
+  const db = await getMongoDb()
+  return db.collection<PresenceDoc>("presence")
 }
 
 export function departmentToDoc(dept: Department, updatedAt = Date.now()): DepartmentDoc {
