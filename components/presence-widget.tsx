@@ -37,6 +37,15 @@ const PROFILE_KEY = PRESENCE_PROFILE_KEY
 const DEVICE_KEY = "vlsi-presence-device-v1"
 const HEARTBEAT_MS = 12_000
 const MAX_AVATARS = 5
+/** Nhãn team luôn hiện trước; tên cá nhân xem khi hover */
+export const PRESENCE_TEAM_LABEL = "ACLAB TEAM"
+
+function personalLabel(u: {
+  displayName: string
+  anonymous: boolean
+}): string {
+  return u.anonymous || !u.displayName.trim() ? "Ẩn danh" : u.displayName.trim()
+}
 
 type Profile = {
   displayName: string
@@ -273,20 +282,21 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col gap-4 p-6">
             <DialogHeader className="gap-1.5">
               <DialogTitle className="text-lg font-semibold tracking-tight">
-                Tên hiển thị
+                Tên trong {PRESENCE_TEAM_LABEL}
               </DialogTitle>
               <DialogDescription>
-                Mỗi thiết bị hiện một người riêng (kể cả cùng WiFi). Tên có
-                thể đổi; mã mạng do server gán theo IP.
+                Mọi người đều thuộc <strong>{PRESENCE_TEAM_LABEL}</strong>.
+                Tên bên dưới (vd. Lê Bảo Long) chỉ hiện khi hover danh sách
+                đang xem.
               </DialogDescription>
             </DialogHeader>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="presence-name">Tên của bạn</Label>
+              <Label htmlFor="presence-name">Tên cá nhân (khi hover)</Label>
               <Input
                 id="presence-name"
                 value={nameDraft}
                 onChange={(e) => setNameDraft(e.target.value)}
-                placeholder="Ví dụ: Long, Tổ VLSI…"
+                placeholder="Ví dụ: Lê Bảo Long"
                 className="h-10 rounded-xl"
                 maxLength={40}
                 onKeyDown={(e) => {
@@ -404,21 +414,25 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
               className
             )}
             onClick={openNameDialog}
-            aria-label="Người đang xem — bấm để đổi tên"
+            aria-label={`${PRESENCE_TEAM_LABEL} — người đang xem`}
           />
         }
       >
         <Users data-icon="inline-start" className="size-3.5 opacity-70" />
-        <span className="tabular-nums">{countLabel}</span>
-        <span className="hidden sm:inline">đang xem</span>
+        {/* Team luôn hiện trước; tên cá nhân chỉ trong tooltip hover */}
+        <span className="max-w-[7.5rem] truncate font-medium tracking-tight sm:max-w-none">
+          {PRESENCE_TEAM_LABEL}
+        </span>
+        <span className="tabular-nums text-muted-foreground">{countLabel}</span>
         {shown.length > 0 ? (
           <AvatarGroup className="ml-0.5">
             {shown.map((u) => {
-              // Màu theo thiết bị (mỗi máy khác nhau)
               const color = getPersonColor(u.deviceId)
+              // Avatar: AT (team) hoặc chữ cái tên cá nhân
+              const person = personalLabel(u)
               const initials = u.anonymous
-                ? u.networkTag.slice(0, 2)
-                : getInitials(u.displayName) || u.networkTag.slice(0, 2)
+                ? "AT"
+                : getInitials(person) || "AT"
               return (
                 <Avatar key={u.deviceId} size="sm">
                   <AvatarFallback
@@ -443,33 +457,46 @@ export function PresenceHeaderControl({ className }: { className?: string }) {
         ) : null}
         <Pencil className="size-3 opacity-50" />
       </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-[280px]">
-        <p className="font-medium">
+      <TooltipContent side="bottom" className="max-w-[300px]">
+        <p className="font-semibold tracking-tight text-foreground">
+          {PRESENCE_TEAM_LABEL}
+        </p>
+        <p className="text-xs text-muted-foreground">
           {displayCount > 0 ? displayCount : "—"} thiết bị đang xem
           {configured === false ? " (chỉ máy này)" : ""}
         </p>
         {users.length > 0 ? (
-          <ul className="mt-1 max-h-40 space-y-0.5 overflow-y-auto text-xs text-muted-foreground">
-            {users.map((u) => (
-              <li key={u.deviceId} className="flex items-center gap-1.5">
-                <span className="font-mono text-[10px] tabular-nums text-foreground/70">
-                  #{u.networkTag}
-                </span>
-                <span className="min-w-0 truncate">
-                  {u.anonymous ? "Ẩn danh" : u.displayName}
-                  {u.isSelf || u.deviceId === selfDeviceId ? " · bạn" : ""}
-                </span>
-              </li>
-            ))}
+          <ul className="mt-2 max-h-44 space-y-1 overflow-y-auto border-t border-border/60 pt-2 text-xs">
+            {users.map((u) => {
+              const person = personalLabel(u)
+              const isYou = u.isSelf || u.deviceId === selfDeviceId
+              return (
+                <li
+                  key={u.deviceId}
+                  className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-1.5"
+                >
+                  <span className="shrink-0 font-medium text-foreground">
+                    {PRESENCE_TEAM_LABEL}
+                  </span>
+                  <span className="min-w-0 truncate text-muted-foreground">
+                    · {person}
+                    {isYou ? " · bạn" : ""}
+                    <span className="ml-1 font-mono text-[10px] tabular-nums opacity-70">
+                      #{u.networkTag}
+                    </span>
+                  </span>
+                </li>
+              )
+            })}
           </ul>
         ) : (
           <p className="mt-1 text-xs text-muted-foreground">
-            Chọn tên hoặc ẩn danh để hiện mặt
+            Chọn tên cá nhân hoặc ẩn danh
           </p>
         )}
-        <p className="mt-1.5 text-[11px] text-muted-foreground">
-          Mỗi thiết bị = 1 người. Mã #xxxx = mạng (IP). Cùng WiFi vẫn thấy
-          đủ mọi máy. Bấm để đổi tên.
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Bên ngoài: {PRESENCE_TEAM_LABEL}. Hover: tên từng người. Bấm để
+          đổi tên cá nhân.
         </p>
       </TooltipContent>
     </Tooltip>
