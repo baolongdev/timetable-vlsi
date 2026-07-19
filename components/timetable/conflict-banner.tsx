@@ -10,17 +10,25 @@ type ConflictBannerProps = {
   className?: string
 }
 
-/** Thanh cảnh báo tổng hợp trùng lịch (GV / phòng) */
+/** Thanh cảnh báo tổng hợp — ngôn ngữ dễ hiểu */
 export function ConflictBanner({ index, className }: ConflictBannerProps) {
   const { counts, conflicts } = index
   if (conflicts.length === 0) return null
 
-  const parts: string[] = []
+  const reasons: string[] = []
   if (counts.lecturer > 0) {
-    parts.push(`${counts.lecturer} trùng giảng viên`)
+    reasons.push(
+      counts.lecturer === 1
+        ? "1 trường hợp cùng giảng viên dạy hai nhóm cùng lúc"
+        : `${counts.lecturer} trường hợp cùng giảng viên dạy hai nhóm cùng lúc`
+    )
   }
   if (counts.room > 0) {
-    parts.push(`${counts.room} trùng phòng`)
+    reasons.push(
+      counts.room === 1
+        ? "1 trường hợp hai nhóm dùng chung một phòng cùng lúc"
+        : `${counts.room} trường hợp hai nhóm dùng chung một phòng cùng lúc`
+    )
   }
 
   return (
@@ -32,12 +40,16 @@ export function ConflictBanner({ index, className }: ConflictBannerProps) {
       )}
     >
       <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-      <div className="min-w-0 flex flex-col gap-0.5">
+      <div className="flex min-w-0 flex-col gap-1">
         <p className="font-medium">
-          Cảnh báo trùng lịch · {counts.schedules} nhóm bị ảnh hưởng
+          Có {counts.schedules} nhóm lớp bị trùng lịch
         </p>
-        <p className="text-xs text-destructive/80">
-          {parts.join(" · ")}. Card viền đỏ trên lưới; hover để xem chi tiết.
+        <p className="text-xs leading-relaxed text-destructive/85">
+          {reasons.join(". ")}.
+        </p>
+        <p className="text-xs text-destructive/70">
+          Nhóm bị trùng có viền đỏ trên lưới — bấm vào card để xem chi tiết và
+          chỉnh lại phân công.
         </p>
       </div>
     </div>

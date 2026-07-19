@@ -1,3 +1,4 @@
+import { DAYS } from "@/data/timetable"
 import type { Schedule } from "@/types/timetable"
 
 /** Bỏ qua khi không có người / không có phòng hợp lệ */
@@ -11,18 +12,16 @@ export type ScheduleConflict = {
   resource: string
   aId: string
   bId: string
-  /** Mô tả ngắn tiếng Việt */
+  /** Tiêu đề ngắn (1 dòng) */
+  title: string
+  /** Giải thích đầy đủ, nhiều dòng */
   message: string
 }
 
 export type ConflictIndex = {
-  /** Danh sách cặp xung đột (mỗi cặp 1 lần, aId < bId theo string) */
   conflicts: ScheduleConflict[]
-  /** scheduleId → các conflict liên quan */
   byScheduleId: Map<string, ScheduleConflict[]>
-  /** scheduleId có conflict? */
   conflictIds: Set<string>
-  /** Thống kê nhanh */
   counts: { lecturer: number; room: number; schedules: number }
 }
 
@@ -85,7 +84,6 @@ function isValidRoom(room: string | undefined | null): room is string {
   return !UNASSIGNED.has(t.toLowerCase())
 }
 
-/** Tập người liên quan một slot (phụ trách + giảng dạy + lecturer hiển thị) */
 function peopleOf(s: Schedule): string[] {
   const out = new Set<string>()
   for (const n of [s.teacher, s.lead, s.lecturer]) {
@@ -94,18 +92,66 @@ function peopleOf(s: Schedule): string[] {
   return [...out]
 }
 
-function labelOf(s: Schedule): string {
-  return `${s.courseCode}/${s.className}`
+/** schedule.day = 1…7 (T2…CN) */
+function dayLabel(day: number): string {
+  return DAYS.find((d) => d.day === day)?.label ?? `Ngày ${day}`
+}
+
+function periodPhrase(s: Schedule): string {
+  if (s.startPeriod === s.endPeriod) return `tiết ${s.startPeriod}`
+  return `tiết ${s.startPeriod}–${s.endPeriod}`
+}
+
+/** Ví dụ: CO3038 · nhóm CC02 — Phát triển Ứng dụng IoT (TN) */
+function sectionPhrase(s: Schedule): string {
+  return `${s.courseCode} · nhóm ${s.className} — ${s.courseName}`
+}
+
+function overlapWhen(a: Schedule, b: Schedule): string {
+  // Cùng day đã được periodsOverlap đảm bảo
+  const periods =
+    a.startPeriod === b.startPeriod && a.endPeriod === b.endPeriod
+      ? periodPhrase(a)
+      : `${periodPhrase(a)} giao với ${periodPhrase(b)}`
+  return `${dayLabel(a.day)}, ${periods}`
+}
+
+function lecturerConflictMessage(
+  person: string,
+  a: Schedule,
+  b: Schedule
+): { title: string; message: string } {
+  const title = `Giảng viên ${person} bị xếp trùng 2 nhóm`
+  const message = [
+    `Giảng viên ${person} đang được phân công vào hai nhóm học cùng lúc:`,
+    `1) ${sectionPhrase(a)}`,
+    `2) ${sectionPhrase(b)}`,
+    `Thời điểm trùng: ${overlapWhen(a, b)}.`,
+    `Hai nhóm có giao tuần học — không thể dạy cả hai cùng lúc.`,
+  ].join("\n")
+  return { title, message }
+}
+
+function roomConflictMessage(
+  room: string,
+  a: Schedule,
+  b: Schedule
+): { title: string; message: string } {
+  const title = `Phòng ${room} bị xếp trùng 2 nhóm`
+  const message = [
+    `Phòng ${room} đang được dùng cho hai nhóm học cùng lúc:`,
+    `1) ${sectionPhrase(a)}`,
+    `2) ${sectionPhrase(b)}`,
+    `Thời điểm trùng: ${overlapWhen(a, b)}.`,
+    `Hai nhóm có giao tuần học — một phòng không thể chứa hai lớp cùng lúc.`,
+  ].join("\n")
+  return { title, message }
 }
 
 /**
- * Tìm trùng lịch trong danh sách schedule (cùng khoa/bộ lọc).
- *
- * - **lecturer**: cùng người (CB phụ trách hoặc giảng dạy) + cùng thứ +
- *   giao tiết + giao tuần
+ * Tìm trùng lịch:
+ * - **lecturer**: cùng người + cùng thứ + giao tiết + giao tuần
  * - **room**: cùng phòng + cùng thứ + giao tiết + giao tuần
- *
- * Độ phức tạp O(n²) — đủ cho ~vài trăm nhóm lớp.
  */
 export function findScheduleConflicts(
   schedules: Schedule[]
@@ -144,33 +190,35 @@ export function findScheduleConflicts(
       if (!periodsOverlap(a, b)) continue
       if (!setsIntersect(weeksOf(a), weeksOf(b))) continue
 
-      // Trùng giảng viên / cán bộ
       const peopleA = peopleOf(a)
       const peopleB = new Set(peopleOf(b))
       for (const person of peopleA) {
         if (!peopleB.has(person)) continue
+        const { title, message } = lecturerConflictMessage(person, a, b)
         push({
           kind: "lecturer",
           resource: person,
           aId: a.id,
           bId: b.id,
-          message: `${person} trùng lịch: ${labelOf(a)} ↔ ${labelOf(b)} (thứ ${a.day + 1}, tiết ${a.startPeriod}–${a.endPeriod} / ${b.startPeriod}–${b.endPeriod})`,
+          title,
+          message,
         })
       }
 
-      // Trùng phòng
       if (
         isValidRoom(a.room) &&
         isValidRoom(b.room) &&
         a.room.trim() === b.room.trim()
       ) {
         const room = a.room.trim()
+        const { title, message } = roomConflictMessage(room, a, b)
         push({
           kind: "room",
           resource: room,
           aId: a.id,
           bId: b.id,
-          message: `Phòng ${room} trùng: ${labelOf(a)} ↔ ${labelOf(b)} (thứ ${a.day + 1}, tiết ${a.startPeriod}–${a.endPeriod} / ${b.startPeriod}–${b.endPeriod})`,
+          title,
+          message,
         })
       }
     }
@@ -195,12 +243,22 @@ export function findScheduleConflicts(
   }
 }
 
-/** Tóm tắt 1 dòng cho badge/tooltip */
+/** Tooltip / title: gộp title ngắn */
 export function summarizeConflictsFor(
   scheduleId: string,
   index: ConflictIndex
 ): string {
   const list = index.byScheduleId.get(scheduleId)
   if (!list?.length) return ""
-  return list.map((c) => c.message).join("\n")
+  return list.map((c) => c.title).join("\n")
+}
+
+/** Dialog: danh sách message đầy đủ */
+export function detailConflictsFor(
+  scheduleId: string,
+  index: ConflictIndex
+): string[] {
+  const list = index.byScheduleId.get(scheduleId)
+  if (!list?.length) return []
+  return list.map((c) => c.message)
 }

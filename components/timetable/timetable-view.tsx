@@ -19,6 +19,7 @@ import { TimetableHeader } from "@/components/timetable/timetable-header"
 import { TimetableMobile } from "@/components/timetable/timetable-mobile"
 import { TimetableToolbar } from "@/components/timetable/timetable-toolbar"
 import {
+  detailConflictsFor,
   findScheduleConflicts,
   summarizeConflictsFor,
 } from "@/lib/schedule-conflicts"
@@ -72,15 +73,16 @@ export function TimetableView() {
     gridRef.current?.scrollByViewport(direction)
   }, [])
 
-  const { departments, hydrated } = useDepartments()
+  const { departments, version, hydrated } = useDepartments()
   const params = useParams<{ dept?: string }>()
   const deptParam = params.dept ?? null
 
   // Khoa đang xem: theo ?dept=, mặc định khoa đầu tiên
+  // `version` buộc recompute khi assign() — không chỉ dựa ref dept
   const dept = React.useMemo(
     () =>
       departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
-    [departments, deptParam]
+    [departments, deptParam, version]
   )
 
   const baseSchedules = React.useMemo<Schedule[]>(() => {
@@ -105,14 +107,14 @@ export function TimetableView() {
           weeks: s.weeksLabel,
         }
       })
-  }, [dept])
+  }, [dept, version])
 
   const filtered = React.useMemo(
     () => filterSchedules(baseSchedules, filters),
     [baseSchedules, filters]
   )
 
-  /** Trùng lịch trên toàn khoa (không theo filter) — đổi phân công sẽ recompute */
+  /** Trùng lịch toàn khoa — recompute mỗi khi version/baseSchedules đổi */
   const conflictIndex = React.useMemo(
     () => findScheduleConflicts(baseSchedules),
     [baseSchedules]
@@ -126,11 +128,24 @@ export function TimetableView() {
     return map
   }, [conflictIndex])
 
+  // Đồng bộ card đang mở với data mới (phân công) — không giữ snapshot cũ
+  React.useEffect(() => {
+    if (!selected) return
+    const latest = baseSchedules.find((s) => s.id === selected.id)
+    if (!latest) return
+    if (
+      latest.lead !== selected.lead ||
+      latest.teacher !== selected.teacher ||
+      latest.lecturer !== selected.lecturer
+    ) {
+      setSelected(latest)
+    }
+  }, [baseSchedules, selected])
+
   const selectedConflictMessages = React.useMemo(() => {
     if (!selected) return undefined
-    return conflictIndex.byScheduleId
-      .get(selected.id)
-      ?.map((c) => c.message)
+    const details = detailConflictsFor(selected.id, conflictIndex)
+    return details.length > 0 ? details : undefined
   }, [selected, conflictIndex])
 
   const lecturers = React.useMemo(
@@ -336,32 +351,13 @@ export function TimetableView() {
         onAssignmentChange={
           dept && selected
             ? (patch) => {
+                // Ghi store → version++ → baseSchedules + conflictIndex recompute realtime
                 departmentStore.assign(
                   dept.id,
                   scheduleKey(selected.id),
                   patch
                 )
-                if (patch.teacher !== undefined || patch.lead !== undefined) {
-                  setSelected((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          lecturer:
-                            patch.teacher ||
-                            patch.lead ||
-                            prev.lecturer,
-                          lead:
-                            patch.lead !== undefined
-                              ? patch.lead
-                              : prev.lead,
-                          teacher:
-                            patch.teacher !== undefined
-                              ? patch.teacher
-                              : prev.teacher,
-                        }
-                      : prev
-                  )
-                }
+                // selected được sync qua useEffect từ baseSchedules
               }
             : undefined
         }

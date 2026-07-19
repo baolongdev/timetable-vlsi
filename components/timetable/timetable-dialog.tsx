@@ -124,19 +124,25 @@ export function TimetableDialog({
           {hasConflicts ? (
             <div
               role="alert"
-              className="flex flex-col gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive"
+              className="flex flex-col gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-3 text-sm text-destructive"
             >
               <p className="flex items-center gap-1.5 font-medium">
                 <AlertTriangle className="size-3.5 shrink-0" />
-                Cảnh báo trùng lịch
+                Nhóm này bị trùng lịch
               </p>
-              <ul className="list-inside list-disc text-xs text-destructive/90">
+              <p className="text-[11px] leading-snug text-destructive/75">
+                Cần đổi cán bộ hoặc phòng (tab Phân công) để hết cảnh báo.
+              </p>
+              <div className="flex flex-col gap-2.5">
                 {conflictMessages!.map((m, i) => (
-                  <li key={i} className="leading-relaxed">
+                  <div
+                    key={i}
+                    className="rounded-lg border border-destructive/15 bg-background/60 px-3 py-2 text-xs leading-relaxed whitespace-pre-line text-destructive/95"
+                  >
                     {m}
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           ) : null}
 

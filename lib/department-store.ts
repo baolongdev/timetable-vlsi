@@ -2,10 +2,7 @@
 
 import * as React from "react"
 
-import type {
-  Assignment,
-  ImportedSection,
-} from "@/types/import"
+import type { Assignment, ImportedSection } from "@/types/import"
 import { sectionKey } from "@/types/import"
 
 export type Department = {
@@ -24,6 +21,40 @@ type StoreState = {
 }
 
 const STORAGE_KEY = "timetable-departments-v2"
+
+/**
+ * Singleton gắn globalThis — tránh HMR/Next tạo 2 bản store
+ * (ghi vào A, đọc từ B → phải F5 mới thấy).
+ */
+type GlobalDeptStore = {
+  state: StoreState
+  hydrated: boolean
+  version: number
+  listeners: Set<() => void>
+  /** Snapshot ổn định cho useSyncExternalStore (đổi ref khi version tăng) */
+  snapshot: DeptStoreSnapshot
+}
+
+export type DeptStoreSnapshot = {
+  departments: Department[]
+  version: number
+}
+
+const g = globalThis as unknown as { __timetableDeptStore?: GlobalDeptStore }
+
+function getG(): GlobalDeptStore {
+  if (!g.__timetableDeptStore) {
+    const empty: StoreState = { departments: [] }
+    g.__timetableDeptStore = {
+      state: empty,
+      hydrated: false,
+      version: 0,
+      listeners: new Set(),
+      snapshot: { departments: empty.departments, version: 0 },
+    }
+  }
+  return g.__timetableDeptStore
+}
 
 function slugify(name: string): string {
   return (
@@ -49,22 +80,20 @@ function loadState(): StoreState {
   }
 }
 
-type Listener = () => void
-
-/**
- * Store module-level + subscribe: các trang (Timetable, Môn học, hub)
- * cùng thấy một danh sách khoa, đồng bộ ngay khi thay đổi, lưu localStorage.
- */
-let state: StoreState = { departments: [] }
-let hydratedGlobal = false
-const listeners = new Set<Listener>()
-
 function emit() {
-  for (const l of listeners) l()
+  const store = getG()
+  for (const l of store.listeners) l()
 }
 
 function persist(next: StoreState) {
-  state = next
+  const store = getG()
+  store.state = next
+  store.version += 1
+  // Snapshot mới mỗi lần mutate → useSyncExternalStore luôn detect thay đổi
+  store.snapshot = {
+    departments: next.departments,
+    version: store.version,
+  }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   } catch {
@@ -74,25 +103,36 @@ function persist(next: StoreState) {
 }
 
 function ensureHydrated() {
-  if (hydratedGlobal || typeof window === "undefined") return
-  state = loadState()
-  hydratedGlobal = true
+  const store = getG()
+  if (store.hydrated || typeof window === "undefined") return
+  const loaded = loadState()
+  store.state = loaded
+  store.hydrated = true
+  store.version += 1
+  store.snapshot = {
+    departments: loaded.departments,
+    version: store.version,
+  }
 }
 
-// Snapshot server/SSR — phải là hằng để useSyncExternalStore không loop
-const EMPTY_STATE: StoreState = { departments: [] }
+// Snapshot server/SSR — hằng số, không loop
+const SERVER_SNAPSHOT: DeptStoreSnapshot = {
+  departments: [],
+  version: 0,
+}
 
 export const departmentStore = {
-  subscribe(listener: Listener) {
-    listeners.add(listener)
-    return () => listeners.delete(listener)
+  subscribe(listener: () => void) {
+    const store = getG()
+    store.listeners.add(listener)
+    return () => store.listeners.delete(listener)
   },
-  getSnapshot(): StoreState {
+  getSnapshot(): DeptStoreSnapshot {
     ensureHydrated()
-    return state
+    return getG().snapshot
   },
-  getServerSnapshot(): StoreState {
-    return EMPTY_STATE
+  getServerSnapshot(): DeptStoreSnapshot {
+    return SERVER_SNAPSHOT
   },
 
   /** Thêm/ghi đè một khoa từ sheet đã chọn */
@@ -101,9 +141,10 @@ export const departmentStore = {
     fileName: string,
     sections: ImportedSection[]
   ) {
+    ensureHydrated()
+    const store = getG()
     const id = slugify(sheetName)
-    const existing = state.departments.find((d) => d.id === id)
-    // Giữ phân công cũ cho các nhóm vẫn tồn tại
+    const existing = store.state.departments.find((d) => d.id === id)
     const keys = new Set(sections.map(sectionKey))
     const kept: Record<string, Assignment> = {}
     if (existing) {
@@ -121,7 +162,7 @@ export const departmentStore = {
     }
     persist({
       departments: [
-        ...state.departments.filter((d) => d.id !== id),
+        ...store.state.departments.filter((d) => d.id !== id),
         dept,
       ].sort((a, b) => a.name.localeCompare(b.name, "vi")),
     })
@@ -129,14 +170,18 @@ export const departmentStore = {
   },
 
   removeDepartment(id: string) {
+    ensureHydrated()
+    const store = getG()
     persist({
-      departments: state.departments.filter((d) => d.id !== id),
+      departments: store.state.departments.filter((d) => d.id !== id),
     })
   },
 
   assign(deptId: string, key: string, patch: Assignment) {
+    ensureHydrated()
+    const store = getG()
     persist({
-      departments: state.departments.map((d) =>
+      departments: store.state.departments.map((d) =>
         d.id === deptId
           ? {
               ...d,
@@ -151,7 +196,7 @@ export const departmentStore = {
   },
 }
 
-/** Hook đọc danh sách khoa (đồng bộ giữa các component/trang) */
+/** Hook đọc danh sách khoa + version (để force recompute conflict realtime) */
 export function useDepartments() {
   const snapshot = React.useSyncExternalStore(
     departmentStore.subscribe,
@@ -160,7 +205,11 @@ export function useDepartments() {
   )
   const [hydrated, setHydrated] = React.useState(false)
   React.useEffect(() => setHydrated(true), [])
-  return { departments: snapshot.departments, hydrated }
+  return {
+    departments: snapshot.departments,
+    version: snapshot.version,
+    hydrated,
+  }
 }
 
 /** Phân công hiệu lực của một nhóm: người dùng chọn > giá trị trong file */
