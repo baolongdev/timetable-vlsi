@@ -2,27 +2,16 @@
 
 import * as React from "react"
 import {
+  AlertTriangle,
   CalendarRange,
   Clock,
   Hash,
   MapPin,
-  Pencil,
   Users,
-  X,
 } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { LecturerChip } from "@/components/lecturer-chip"
 import { LecturerPicker } from "@/components/import/lecturer-picker"
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from "@/components/ui/combobox"
+import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -41,25 +30,18 @@ import {
   getPeriodRangeLabel,
   getPeriodSpanLabel,
 } from "@/data/timetable"
-import { findCourseByCode } from "@/data/courses"
-import { initialLecturers } from "@/data/lecturers"
-import { getLecturerColor } from "@/lib/lecturer-colors"
-import { getInitials } from "@/lib/person-color"
-import { cn } from "@/lib/utils"
+import { formatLecturerWithStaffId } from "@/lib/lecturer-staff"
 import type { Schedule } from "@/types/timetable"
-
-const lecturerNames = initialLecturers.map((l) => l.name)
 
 type TimetableDialogProps = {
   schedule: Schedule | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** Đổi giảng viên trực tiếp cho nhóm lớp này (chỉ trong phiên) */
   onLecturerChange?: (scheduleId: string, lecturer: string) => void
-  /** Chế độ file phân công: giá trị hiện tại của 2 vai trò */
   assignment?: { lead?: string; teacher?: string }
-  /** Chế độ file phân công: chọn cán bộ phụ trách / giảng dạy */
   onAssignmentChange?: (patch: { lead?: string; teacher?: string }) => void
+  /** Các dòng cảnh báo trùng lịch của nhóm này */
+  conflictMessages?: string[]
 }
 
 function Row({
@@ -86,6 +68,7 @@ function Row({
   )
 }
 
+/** Dialog chi tiết nhóm lớp — 3 tab: Môn học · Lịch · Phân công */
 export function TimetableDialog({
   schedule,
   open,
@@ -93,13 +76,8 @@ export function TimetableDialog({
   onLecturerChange,
   assignment,
   onAssignmentChange,
+  conflictMessages,
 }: TimetableDialogProps) {
-  const [editingLecturer, setEditingLecturer] = React.useState(false)
-
-  React.useEffect(() => {
-    if (!open) setEditingLecturer(false)
-  }, [open])
-
   if (!schedule) return null
 
   const timeRange = getPeriodRangeLabel(
@@ -110,12 +88,13 @@ export function TimetableDialog({
     schedule.startPeriod,
     schedule.endPeriod
   )
-  const course = findCourseByCode(schedule.courseCode)
+  const canAssign = Boolean(assignment && onAssignmentChange)
+  const hasConflicts = Boolean(conflictMessages?.length)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[700px]">
-        <div className="flex flex-col gap-5 p-6">
+        <div className="flex max-h-[85dvh] flex-col gap-5 overflow-y-auto p-6">
           <DialogHeader className="gap-2">
             <DialogTitle className="text-xl font-semibold tracking-tight">
               {schedule.courseName}
@@ -133,28 +112,56 @@ export function TimetableDialog({
               <span className="font-mono text-xs tabular-nums text-muted-foreground">
                 {timeRange}
               </span>
+              {hasConflicts ? (
+                <Badge variant="destructive" className="gap-0.5 text-[10px]">
+                  <AlertTriangle className="size-3" />
+                  Trùng lịch
+                </Badge>
+              ) : null}
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="info">
-            <TabsList className="h-9 w-full justify-start gap-1 bg-transparent p-0">
+          {hasConflicts ? (
+            <div
+              role="alert"
+              className="flex flex-col gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-2.5 text-sm text-destructive"
+            >
+              <p className="flex items-center gap-1.5 font-medium">
+                <AlertTriangle className="size-3.5 shrink-0" />
+                Cảnh báo trùng lịch
+              </p>
+              <ul className="list-inside list-disc text-xs text-destructive/90">
+                {conflictMessages!.map((m, i) => (
+                  <li key={i} className="leading-relaxed">
+                    {m}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <Tabs defaultValue={canAssign ? "people" : "info"}>
+            <TabsList
+              variant="line"
+              className="h-9 w-full justify-start gap-1 bg-transparent p-0"
+            >
               <TabsTrigger
                 value="info"
                 className="rounded-lg data-active:bg-muted"
               >
-                Course
+                Môn học
               </TabsTrigger>
               <TabsTrigger
                 value="schedule"
                 className="rounded-lg data-active:bg-muted"
               >
-                Schedule
+                Lịch
               </TabsTrigger>
               <TabsTrigger
                 value="people"
                 className="rounded-lg data-active:bg-muted"
               >
-                People
+                Phân công
               </TabsTrigger>
             </TabsList>
 
@@ -163,202 +170,128 @@ export function TimetableDialog({
             <TabsContent value="info" className="mt-0 flex flex-col gap-1">
               <Row
                 icon={Hash}
-                label="Course code"
+                label="Mã môn"
                 value={
                   <span className="font-mono">{schedule.courseCode}</span>
                 }
               />
-              <Row icon={MapPin} label="Room" value={schedule.room} />
+              <Row icon={MapPin} label="Phòng" value={schedule.room} />
               <Row
                 icon={CalendarRange}
-                label="Weeks"
+                label="Tuần học"
                 value={schedule.weeks}
               />
               <Row
                 icon={Users}
-                label="Capacity"
-                value={`${schedule.capacity} students`}
+                label="Sĩ số"
+                value={`${schedule.capacity} sinh viên`}
               />
             </TabsContent>
 
             <TabsContent value="schedule" className="mt-0 flex flex-col gap-1">
-              <Row icon={Clock} label="Periods" value={periodLabel} />
+              <Row icon={Clock} label="Tiết" value={periodLabel} />
               <Row
                 icon={Clock}
-                label="Time"
+                label="Giờ"
                 value={
                   <span className="font-mono tabular-nums">{timeRange}</span>
                 }
               />
               <Row
                 icon={CalendarRange}
-                label="Weeks"
+                label="Tuần học"
                 value={schedule.weeks}
               />
-              <Row icon={MapPin} label="Room" value={schedule.room} />
-            </TabsContent>
-
-            <TabsContent value="people" className="mt-0 flex flex-col gap-1">
-              {assignment && onAssignmentChange ? (
-                <>
-                  {/* Phân công từ file Excel — chọn trực tiếp */}
-                  <div className="flex flex-col gap-3 pb-2">
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Cán bộ phụ trách
-                      </span>
-                      <LecturerPicker
-                        value={assignment.lead ?? null}
-                        onValueChange={(value) =>
-                          onAssignmentChange({ lead: value ?? undefined })
-                        }
-                        placeholder="Chọn cán bộ phụ trách…"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Cán bộ giảng dạy
-                      </span>
-                      <LecturerPicker
-                        value={assignment.teacher ?? null}
-                        onValueChange={(value) =>
-                          onAssignmentChange({ teacher: value ?? undefined })
-                        }
-                        placeholder="Chọn cán bộ giảng dạy…"
-                      />
-                    </div>
-                  </div>
-                  <Separator className="mb-2" />
-                </>
-              ) : null}
-              <div className="flex items-start gap-3 py-2">
-                <span
-                  className={cn(
-                    "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold",
-                    getLecturerColor(schedule.lecturer).bg,
-                    getLecturerColor(schedule.lecturer).text,
-                    getLecturerColor(schedule.lecturer).border
-                  )}
-                  aria-hidden
-                >
-                  {getInitials(schedule.lecturer)}
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Lecturer
-                  </span>
-                  {editingLecturer && onLecturerChange ? (
-                    <div className="flex items-center gap-1.5 pt-0.5">
-                      <Combobox
-                        autoHighlight
-                        items={lecturerNames}
-                        value={schedule.lecturer}
-                        onValueChange={(value) => {
-                          if (value) {
-                            onLecturerChange(schedule.id, value)
-                            setEditingLecturer(false)
-                          }
-                        }}
-                      >
-                        <ComboboxInput
-                          placeholder="Tìm giảng viên…"
-                          className="h-9 w-full max-w-xs rounded-lg"
-                          autoFocus
-                        />
-                        <ComboboxContent className="w-auto min-w-(--anchor-width) max-w-80">
-                          <ComboboxEmpty>
-                            Không tìm thấy giảng viên.
-                          </ComboboxEmpty>
-                          <ComboboxList>
-                            {(item: string) => (
-                              <ComboboxItem
-                                key={item}
-                                value={item}
-                                className="whitespace-nowrap"
-                              >
-                                {item}
-                              </ComboboxItem>
-                            )}
-                          </ComboboxList>
-                        </ComboboxContent>
-                      </Combobox>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => setEditingLecturer(false)}
-                        aria-label="Hủy đổi giảng viên"
-                      >
-                        <X />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-foreground">
-                        {schedule.lecturer}
-                      </span>
-                      {onLecturerChange ? (
-                        <Button
-                          variant="ghost"
-                          size="icon-xs"
-                          className="text-muted-foreground opacity-60 hover:opacity-100"
-                          onClick={() => setEditingLecturer(true)}
-                          aria-label="Đổi giảng viên"
-                        >
-                          <Pencil />
-                        </Button>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <Row icon={Users} label="Group" value={schedule.className} />
+              <Row icon={MapPin} label="Phòng" value={schedule.room} />
               <Row
                 icon={Users}
-                label="Students"
-                value={`${schedule.capacity} enrolled`}
+                label="Nhóm"
+                value={
+                  <span className="font-mono">{schedule.className}</span>
+                }
               />
+            </TabsContent>
 
-              {course ? (
+            <TabsContent value="people" className="mt-0 flex flex-col gap-3">
+              {canAssign ? (
                 <>
-                  <Separator className="my-2" />
-                  <div className="flex flex-col gap-3">
-                    {course.leadLecturer ? (
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Giảng viên phụ trách môn
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          <LecturerChip name={course.leadLecturer} />
-                        </div>
-                      </div>
-                    ) : null}
-                    {course.theoryLecturers.length > 0 ? (
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Giảng viên lý thuyết
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {course.theoryLecturers.map((name) => (
-                            <LecturerChip key={name} name={name} />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {course.practiceLecturers.length > 0 ? (
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Trợ giảng / thực hành
-                        </span>
-                        <div className="flex flex-wrap gap-1">
-                          {course.practiceLecturers.map((name) => (
-                            <LecturerChip key={name} name={name} />
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
+                  <p className="text-xs text-muted-foreground">
+                    Phân công cho nhóm{" "}
+                    <span className="font-mono font-medium text-foreground">
+                      {schedule.className}
+                    </span>
+                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Cán bộ phụ trách
+                    </span>
+                    <LecturerPicker
+                      value={assignment?.lead ?? null}
+                      onValueChange={(value) =>
+                        onAssignmentChange?.({ lead: value ?? undefined })
+                      }
+                      placeholder="Chọn cán bộ phụ trách…"
+                      className="h-10 rounded-xl"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Cán bộ giảng dạy
+                    </span>
+                    <LecturerPicker
+                      value={assignment?.teacher ?? null}
+                      onValueChange={(value) =>
+                        onAssignmentChange?.({
+                          teacher: value ?? undefined,
+                        })
+                      }
+                      placeholder="Chọn cán bộ giảng dạy…"
+                      className="h-10 rounded-xl"
+                    />
                   </div>
                 </>
-              ) : null}
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Giảng viên
+                  </span>
+                  {onLecturerChange ? (
+                    <LecturerPicker
+                      value={
+                        schedule.lecturer === "Chưa phân công"
+                          ? null
+                          : schedule.lecturer
+                      }
+                      onValueChange={(value) => {
+                        if (value) onLecturerChange(schedule.id, value)
+                      }}
+                      placeholder="Chọn giảng viên…"
+                      className="h-10 rounded-xl"
+                    />
+                  ) : (
+                    <p className="text-sm font-medium">
+                      {schedule.lecturer === "Chưa phân công"
+                        ? "Chưa phân công"
+                        : formatLecturerWithStaffId(schedule.lecturer)}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <Separator />
+
+              <Row
+                icon={Users}
+                label="Nhóm"
+                value={
+                  <span className="font-mono">{schedule.className}</span>
+                }
+              />
+              <Row
+                icon={Users}
+                label="Sĩ số"
+                value={`${schedule.capacity} sinh viên`}
+              />
             </TabsContent>
           </Tabs>
         </div>

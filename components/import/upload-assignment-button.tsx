@@ -118,7 +118,7 @@ export function UploadAssignmentButton({
         ) : (
           <FileSpreadsheet data-icon="inline-start" />
         )}
-        Upload Excel
+        {busy ? "Đang đọc file…" : "Upload Excel"}
       </Button>
       {error ? (
         <span className="text-xs text-destructive">{error}</span>

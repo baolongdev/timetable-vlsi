@@ -154,9 +154,30 @@ export const initialCourses: Course[] = [
   },
 ]
 
+/**
+ * Tìm môn theo MSMH. Mã TN/Th (CO1024, CO2008…) fallback về mã lý thuyết lẻ
+ * gần nhất có trong danh mục (CO1023, CO2007…).
+ */
 export function findCourseByCode(
   code: string,
   courses: Course[] = initialCourses
 ): Course | undefined {
-  return courses.find((c) => c.code === code)
+  const exact = courses.find((c) => c.code === code)
+  if (exact) return exact
+
+  // CO1024 (TN) → thử CO1023; CO3044 → CO3043
+  const m = code.match(/^(.*?)(\d+)$/)
+  if (!m) return undefined
+  const prefix = m[1]
+  let n = Number(m[2])
+  if (!Number.isFinite(n)) return undefined
+  // Lùi tối đa 3 mã (đủ cho pattern LT/TH/BT)
+  for (let i = 0; i < 3; i++) {
+    n -= 1
+    if (n < 0) break
+    const candidate = `${prefix}${String(n).padStart(m[2].length, "0")}`
+    const found = courses.find((c) => c.code === candidate)
+    if (found) return found
+  }
+  return undefined
 }

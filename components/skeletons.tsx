@@ -73,7 +73,9 @@ export function TimetablePageSkeleton() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-7 w-40" />
-            <Skeleton className="h-4 w-56" />
+            <p className="text-sm text-muted-foreground">
+              Đang tải thời khóa biểu&hellip;
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Skeleton className="h-8 w-28 rounded-lg" />
@@ -106,7 +108,9 @@ export function TablePageSkeleton() {
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-7 w-36" />
-            <Skeleton className="h-4 w-64" />
+            <p className="text-sm text-muted-foreground">
+              Đang tải dữ liệu&hellip;
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Skeleton className="h-8 w-28 rounded-lg" />

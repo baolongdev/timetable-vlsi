@@ -1,22 +1,30 @@
 "use client"
 
-import { Clock, GraduationCap, MapPin, UserCog } from "lucide-react"
+import { AlertTriangle, Clock, GraduationCap, MapPin, UserCog } from "lucide-react"
 
 import { pagePadX } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
 import { DAYS, getPeriodRangeLabel } from "@/data/timetable"
 import { getLecturerColor } from "@/lib/lecturer-colors"
+import {
+  formatLecturerWithStaffId,
+  getStaffIdByName,
+} from "@/lib/lecturer-staff"
 import { cn } from "@/lib/utils"
 import type { Schedule } from "@/types/timetable"
 
 type TimetableMobileProps = {
   schedules: Schedule[]
   onSelect: (schedule: Schedule) => void
+  conflictIds?: Set<string>
+  conflictHints?: Map<string, string>
 }
 
 export function TimetableMobile({
   schedules,
   onSelect,
+  conflictIds,
+  conflictHints,
 }: TimetableMobileProps) {
   return (
     <div className={cn(pagePadX, "flex flex-col gap-8 pt-2 pb-10")}>
@@ -43,16 +51,20 @@ export function TimetableMobile({
                     schedule.endPeriod
                   )
 
+                  const hasConflict = conflictIds?.has(schedule.id) ?? false
                   return (
                     <button
                       key={schedule.id}
                       type="button"
                       onClick={() => onSelect(schedule)}
+                      title={conflictHints?.get(schedule.id)}
                       className={cn(
                         "rounded-2xl border border-border/80 bg-background p-4 text-left shadow-none",
                         "transition-all duration-150 ease-out",
                         "hover:-translate-y-px hover:border-foreground/20 hover:shadow-sm",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+                        hasConflict &&
+                          "border-destructive/50 ring-1 ring-destructive/20"
                       )}
                     >
                       <div className="flex flex-col gap-2">
@@ -73,6 +85,15 @@ export function TimetableMobile({
                           >
                             {schedule.className}
                           </Badge>
+                          {hasConflict ? (
+                            <Badge
+                              variant="destructive"
+                              className="gap-0.5 text-[10px]"
+                            >
+                              <AlertTriangle className="size-3" />
+                              Trùng lịch
+                            </Badge>
+                          ) : null}
                         </div>
                         <div className="flex flex-col gap-1 text-[13px] text-muted-foreground">
                           {schedule.lead ? (
@@ -89,7 +110,7 @@ export function TimetableMobile({
                                   getLecturerColor(schedule.lead).text
                                 )}
                               >
-                                {schedule.lead}
+                                {formatLecturerWithStaffId(schedule.lead)}
                               </span>
                             </div>
                           ) : null}
@@ -106,7 +127,9 @@ export function TimetableMobile({
                                 getLecturerColor(schedule.lecturer).text
                               )}
                             >
-                              {schedule.lecturer}
+                              {getStaffIdByName(schedule.lecturer)
+                                ? formatLecturerWithStaffId(schedule.lecturer)
+                                : schedule.lecturer}
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5">

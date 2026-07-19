@@ -22,5 +22,11 @@ export function DeptIndexRedirect({ base }: { base: string }) {
     }
   }, [hydrated, departments, base, router])
 
-  return null
+  return (
+    <div className="flex h-dvh items-center justify-center bg-background px-6">
+      <p className="text-sm text-muted-foreground">
+        Đang mở thời khóa biểu&hellip;
+      </p>
+    </div>
+  )
 }

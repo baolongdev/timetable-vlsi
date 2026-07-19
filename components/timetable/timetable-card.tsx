@@ -1,10 +1,24 @@
 "use client"
 
 import * as React from "react"
-import { CalendarRange, Clock, Copy, GraduationCap, MapPin, MoreHorizontal, Pencil, UserCog } from "lucide-react"
+import {
+  AlertTriangle,
+  CalendarRange,
+  Clock,
+  Copy,
+  GraduationCap,
+  MapPin,
+  MoreHorizontal,
+  Pencil,
+  UserCog,
+} from "lucide-react"
 
 import { getPeriodRangeLabel } from "@/data/timetable"
 import { getLecturerColor } from "@/lib/lecturer-colors"
+import {
+  formatLecturerWithStaffId,
+  getStaffIdByName,
+} from "@/lib/lecturer-staff"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +29,48 @@ import {
 import { cn } from "@/lib/utils"
 import type { Schedule } from "@/types/timetable"
 
-/** Một dòng người phụ trách / giảng dạy trên card, tô màu theo người */
+/** Tooltip text trên card — neo sát text (w-fit), không theo full width card */
+function InfoTooltip({
+  label,
+  children,
+  className,
+  side = "right",
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+  side?: "top" | "bottom" | "left" | "right"
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        delay={300}
+        render={
+          <span
+            className={cn(
+              // w-fit: anchor đúng bề ngang nội dung → tooltip không bị đẩy xa
+              "inline-flex w-fit max-w-full min-w-0",
+              className
+            )}
+          />
+        }
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent
+        side={side}
+        // Cách text một chút, căn giữa theo trục dọc
+        sideOffset={12}
+        align="center"
+        className="max-w-xs text-left text-balance whitespace-normal"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Một dòng người phụ trách / giảng dạy — kèm MSCB (mã số cán bộ) */
 function PersonLine({
   icon: Icon,
   label,
@@ -27,24 +82,40 @@ function PersonLine({
 }) {
   if (!name) {
     return (
-      <div
-        className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground/60"
-        title={`${label}: chưa phân công`}
-      >
-        <Icon className="size-3.5 shrink-0 opacity-50" />
-        <span className="truncate italic">Chưa phân công</span>
-      </div>
+      <InfoTooltip label={`${label}: chưa phân công`}>
+        <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground/60">
+          <Icon className="size-3.5 shrink-0 opacity-50" />
+          <span className="truncate italic text-muted-foreground/70">
+            Chưa phân công
+          </span>
+        </span>
+      </InfoTooltip>
     )
   }
   const color = getLecturerColor(name)
+  const staffId = getStaffIdByName(name)
+  const tooltip = `${label}: ${formatLecturerWithStaffId(name)}`
   return (
-    <div
-      className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
-      title={`${label}: ${name}`}
-    >
-      <Icon className={cn("size-3.5 shrink-0", color.text)} />
-      <span className={cn("truncate font-medium", color.text)}>{name}</span>
-    </div>
+    <InfoTooltip label={tooltip}>
+      <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
+        <Icon className={cn("size-3.5 shrink-0", color.text)} />
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className={cn("truncate font-medium", color.text)}>
+            {name}
+          </span>
+          {staffId ? (
+            <span
+              className={cn(
+                "shrink-0 font-mono text-[10px] tabular-nums opacity-70",
+                color.text
+              )}
+            >
+              MSCB {staffId}
+            </span>
+          ) : null}
+        </span>
+      </span>
+    </InfoTooltip>
   )
 }
 
@@ -54,6 +125,9 @@ type TimetableCardProps = {
   style?: React.CSSProperties
   className?: string
   selected?: boolean
+  /** Trùng lịch (GV / phòng) */
+  hasConflict?: boolean
+  conflictHint?: string
   onClick?: () => void
   onPeriodHoverChange?: (range: { start: number; end: number } | null) => void
 }
@@ -64,6 +138,8 @@ export function TimetableCard({
   style,
   className,
   selected = false,
+  hasConflict = false,
+  conflictHint,
   onClick,
   onPeriodHoverChange,
 }: TimetableCardProps) {
@@ -80,6 +156,14 @@ export function TimetableCard({
     schedule.endPeriod
   )
   const lecturerColor = getLecturerColor(schedule.lecturer)
+  const lecturerStaffId = getStaffIdByName(schedule.lecturer)
+
+  const codeGroupLabel = `${schedule.courseCode} · ${schedule.className}`
+  const weeksLabel = `Tuần ${schedule.weeks}`
+  const leadTeacherLabel = [schedule.lead, schedule.teacher]
+    .filter(Boolean)
+    .map((n) => formatLecturerWithStaffId(n as string))
+    .join(" · ")
 
   const setHover = (active: boolean) => {
     if (canExpand) setExpanded(active)
@@ -130,110 +214,129 @@ export function TimetableCard({
         className
       )}
     >
+      <div
+        className={cn(
+          "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl",
+          isExpanded && "h-auto min-h-full overflow-visible",
+          "border border-border/80 bg-background p-2.5 shadow-none lg:p-3 xl:p-4",
+          "transition-all duration-150 ease-out",
+          "group-hover:border-foreground/20 group-hover:shadow-sm",
+          selected && "border-foreground/30 ring-1 ring-foreground/10",
+          hasConflict &&
+            "border-destructive/50 ring-1 ring-destructive/25 group-hover:border-destructive/70"
+        )}
+        title={hasConflict && conflictHint ? conflictHint : undefined}
+      >
+        {hasConflict ? (
+          <span
+            className="absolute top-2 left-2 z-10 flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+            aria-label="Trùng lịch"
+            title={conflictHint || "Trùng lịch"}
+          >
+            <AlertTriangle className="size-3" />
+          </span>
+        ) : null}
         <div
           className={cn(
-            "relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl",
-            isExpanded && "h-auto min-h-full overflow-visible",
-            "border border-border/80 bg-background p-2.5 shadow-none lg:p-3 xl:p-4",
-            "transition-all duration-150 ease-out",
-            "group-hover:border-foreground/20 group-hover:shadow-sm",
-            selected && "border-foreground/30 ring-1 ring-foreground/10"
+            "absolute top-2 right-2 z-10 flex items-center gap-0.5",
+            "opacity-0 transition-opacity duration-150 ease-out",
+            "group-hover:opacity-100 group-focus-visible:opacity-100",
+            (isSingle || isDouble) && "hidden group-hover:flex"
           )}
         >
-          <div
-            className={cn(
-              "absolute top-2 right-2 z-10 flex items-center gap-0.5",
-              "opacity-0 transition-opacity duration-150 ease-out",
-              "group-hover:opacity-100 group-focus-visible:opacity-100",
-              (isSingle || isDouble) && "hidden group-hover:flex"
-            )}
-          >
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="bg-background/90"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onClick?.()
-                    }}
-                    aria-label="Xem chi tiết"
-                  />
-                }
-              >
-                <MoreHorizontal />
-              </TooltipTrigger>
-              <TooltipContent>Xem chi tiết</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="bg-background/90"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onClick?.()
-                    }}
-                    aria-label="Phân công cán bộ"
-                  />
-                }
-              >
-                <Pencil />
-              </TooltipTrigger>
-              <TooltipContent>Phân công cán bộ</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    className="bg-background/90"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      void navigator.clipboard?.writeText(
-                        `${schedule.courseCode} ${schedule.courseName}`
-                      )
-                    }}
-                    aria-label="Copy mã môn"
-                  />
-                }
-              >
-                <Copy />
-              </TooltipTrigger>
-              <TooltipContent>Copy mã + tên môn</TooltipContent>
-            </Tooltip>
-          </div>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="bg-background/90"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClick?.()
+                  }}
+                  aria-label="Xem chi tiết"
+                />
+              }
+            >
+              <MoreHorizontal />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} align="center">
+              Xem chi tiết
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="bg-background/90"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onClick?.()
+                  }}
+                  aria-label="Phân công cán bộ"
+                />
+              }
+            >
+              <Pencil />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} align="center">
+              Phân công cán bộ
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="bg-background/90"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    void navigator.clipboard?.writeText(
+                      `${schedule.courseCode} ${schedule.courseName}`
+                    )
+                  }}
+                  aria-label="Copy mã môn"
+                />
+              }
+            >
+              <Copy />
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={12} align="center">
+              Copy mã + tên môn
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
-          {/* Shared padding + type scale with 3–4 period cards */}
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col gap-1.5",
-              !isExpanded && "overflow-hidden",
-              (isSingle || isDouble) && "justify-center"
-            )}
-          >
-            {/* Tên môn — same as 3–4 tiết */}
+        {/* Shared padding + type scale with 3–4 period cards */}
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-1.5",
+            !isExpanded && "overflow-hidden",
+            (isSingle || isDouble) && "justify-center"
+          )}
+        >
+          {/* Tên môn */}
+          <InfoTooltip label={schedule.courseName}>
             <p
               className={cn(
-                "font-semibold tracking-tight text-foreground",
+                "w-fit max-w-full font-semibold tracking-tight text-foreground",
                 "text-sm leading-snug xl:text-base",
                 isSingle ? "truncate pr-0" : "line-clamp-2 pr-2"
               )}
             >
               {schedule.courseName}
             </p>
+          </InfoTooltip>
 
-            {/* 1 tiết: chỉ tên môn (đã render ở trên) */}
-
-            {/* 2 tiết: mã môn • L0x + giảng viên */}
-            {isDouble && (
-              <>
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {/* 2 tiết: mã môn • L0x + giảng viên */}
+          {isDouble && (
+            <>
+              <InfoTooltip label={codeGroupLabel}>
+                <span className="inline-flex max-w-full flex-wrap items-center gap-1.5">
                   <Badge
                     variant="outline"
                     className="h-5 border-border/70 font-mono text-[11px] font-medium tabular-nums text-muted-foreground"
@@ -247,37 +350,56 @@ export function TimetableCard({
                   >
                     {schedule.className}
                   </Badge>
-                </div>
-                <div
-                  className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
-                  title={schedule.lecturer}
-                >
+                </span>
+              </InfoTooltip>
+              <InfoTooltip
+                label={
+                  leadTeacherLabel
+                    ? `Giảng viên: ${leadTeacherLabel}`
+                    : formatLecturerWithStaffId(schedule.lecturer)
+                }
+              >
+                <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
                   <GraduationCap
                     className={cn("size-3.5 shrink-0", lecturerColor.text)}
                   />
-                  <span
-                    className={cn("truncate font-medium", lecturerColor.text)}
-                  >
-                    {schedule.lecturer}
+                  <span className="flex min-w-0 items-baseline gap-1.5">
+                    <span
+                      className={cn(
+                        "truncate font-medium",
+                        lecturerColor.text
+                      )}
+                    >
+                      {schedule.lecturer}
+                    </span>
+                    {lecturerStaffId ? (
+                      <span
+                        className={cn(
+                          "shrink-0 font-mono text-[10px] tabular-nums opacity-70",
+                          lecturerColor.text
+                        )}
+                      >
+                        MSCB {lecturerStaffId}
+                      </span>
+                    ) : null}
                   </span>
-                </div>
-                {/* Khi hover mở rộng: đủ 2 vai trò */}
-                {isExpanded ? (
-                  <>
-                    <PersonLine
-                      icon={UserCog}
-                      label="Cán bộ phụ trách"
-                      name={schedule.lead}
-                    />
-                  </>
-                ) : null}
-              </>
-            )}
+                </span>
+              </InfoTooltip>
+              {isExpanded ? (
+                <PersonLine
+                  icon={UserCog}
+                  label="Cán bộ phụ trách"
+                  name={schedule.lead}
+                />
+              ) : null}
+            </>
+          )}
 
-            {/* ≥3 tiết / expand: full */}
-            {!isSingle && !isDouble && (
-              <>
-                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {/* ≥3 tiết / expand: full */}
+          {!isSingle && !isDouble && (
+            <>
+              <InfoTooltip label={codeGroupLabel}>
+                <span className="inline-flex max-w-full flex-wrap items-center gap-1.5">
                   <Badge
                     variant="outline"
                     className="h-5 border-border/70 font-mono text-[11px] font-medium tabular-nums text-muted-foreground"
@@ -291,46 +413,46 @@ export function TimetableCard({
                   >
                     {schedule.className}
                   </Badge>
-                </div>
+                </span>
+              </InfoTooltip>
 
-                <div className="mt-0.5 flex flex-col gap-1">
-                  {/* Cán bộ phụ trách + Cán bộ giảng dạy */}
-                  <PersonLine
-                    icon={UserCog}
-                    label="Cán bộ phụ trách"
-                    name={schedule.lead}
-                  />
-                  <PersonLine
-                    icon={GraduationCap}
-                    label="Cán bộ giảng dạy"
-                    name={schedule.teacher}
-                  />
-                  <div
-                    className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
-                    title={schedule.room}
-                  >
+              <div className="mt-0.5 flex flex-col items-start gap-1">
+                <PersonLine
+                  icon={UserCog}
+                  label="Cán bộ phụ trách"
+                  name={schedule.lead}
+                />
+                <PersonLine
+                  icon={GraduationCap}
+                  label="Cán bộ giảng dạy"
+                  name={schedule.teacher}
+                />
+                <InfoTooltip label={`Phòng: ${schedule.room}`}>
+                  <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
                     <MapPin className="size-3.5 shrink-0 opacity-60" />
                     <span className="truncate">{schedule.room}</span>
-                  </div>
-                  <div
-                    className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
-                    title={`Tuần ${schedule.weeks}`}
-                  >
+                  </span>
+                </InfoTooltip>
+                <InfoTooltip label={weeksLabel}>
+                  <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
                     <CalendarRange className="size-3.5 shrink-0 opacity-60" />
                     <span className="truncate font-mono text-xs tabular-nums">
-                      Tuần {schedule.weeks}
+                      {weeksLabel}
                     </span>
-                  </div>
-                </div>
+                  </span>
+                </InfoTooltip>
+              </div>
 
-                <p className="mt-auto flex items-center gap-1.5 pt-1 font-mono text-xs tabular-nums text-muted-foreground">
+              <InfoTooltip label={`Giờ học: ${timeRange}`}>
+                <p className="mt-auto inline-flex w-fit max-w-full items-center gap-1.5 pt-1 font-mono text-xs tabular-nums text-muted-foreground">
                   <Clock className="size-3 shrink-0 opacity-60" />
                   {timeRange}
                 </p>
-              </>
-            )}
-          </div>
+              </InfoTooltip>
+            </>
+          )}
         </div>
+      </div>
     </div>
   )
 }

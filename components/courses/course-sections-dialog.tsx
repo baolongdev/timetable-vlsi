@@ -31,9 +31,7 @@ type CourseSectionsDialogProps = {
   onOpenChange: (open: boolean) => void
   course: Course | null
   sections: CourseSection[]
-  /** Chế độ file phân công: lấy phân công hiệu lực của một nhóm */
   getAssignment?: (section: CourseSection) => Assignment
-  /** Chế độ file phân công: cập nhật phân công (key = `${code}-${group}`) */
   onAssign?: (key: string, patch: Assignment) => void
 }
 
@@ -57,8 +55,8 @@ export function CourseSectionsDialog({
           assignable ? "sm:max-w-5xl" : "sm:max-w-3xl"
         )}
       >
-        <div className="flex max-h-[80dvh] flex-col gap-4 p-6">
-          <DialogHeader className="gap-1.5">
+        <div className="flex max-h-[80dvh] min-w-0 flex-col gap-4 p-4 sm:p-6">
+          <DialogHeader className="shrink-0 gap-1.5">
             <DialogTitle className="text-lg font-semibold tracking-tight">
               {course.name}
             </DialogTitle>
@@ -83,33 +81,52 @@ export function CourseSectionsDialog({
               Chưa có dữ liệu tiết / lịch tuần cho môn này.
             </div>
           ) : (
-            <div
-              className={cn(
-                "scrollbar-minimal min-h-0 flex-1 overflow-auto rounded-xl border border-border/70",
-                "[&_[data-slot=table-container]]:overflow-visible"
-              )}
-            >
-              <Table className="[&_td]:py-2 [&_th:first-child]:pl-3 [&_td:first-child]:pl-3 [&_th:last-child]:pr-3 [&_td:last-child]:pr-3">
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_var(--border)] [&_tr]:border-b-0">
+            /*
+             * Một scrollport duy nhất (x + y).
+             * Bỏ overflow-x-auto lồng nhau của Table — sticky header mới bám được.
+             */
+            <div className="scrollbar-minimal min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-border/70">
+              <Table
+                containerClassName="overflow-visible"
+                className={cn(
+                  assignable ? "min-w-[980px]" : "min-w-[640px]",
+                  "border-separate border-spacing-0",
+                  "[&_td]:py-2 [&_th:first-child]:pl-3 [&_td:first-child]:pl-3",
+                  "[&_th:last-child]:pr-3 [&_td:last-child]:pr-3"
+                )}
+              >
+                <TableHeader className="sticky top-0 z-20 [&_tr]:border-b-0">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[70px]">MSMH</TableHead>
-                    <TableHead className="w-[70px]">Nhóm</TableHead>
-                    <TableHead className="w-[70px]">Thứ</TableHead>
-                    <TableHead>Tiết</TableHead>
-                    <TableHead className="w-[110px]">Phòng</TableHead>
-                    <TableHead className="hidden w-[60px] text-center sm:table-cell">
+                    <TableHead className="sticky top-0 z-20 w-[70px] border-b bg-background">
+                      MSMH
+                    </TableHead>
+                    <TableHead className="sticky top-0 z-20 w-[70px] border-b bg-background">
+                      Nhóm
+                    </TableHead>
+                    <TableHead className="sticky top-0 z-20 w-[70px] border-b bg-background">
+                      Thứ
+                    </TableHead>
+                    <TableHead className="sticky top-0 z-20 border-b bg-background">
+                      Tiết
+                    </TableHead>
+                    <TableHead className="sticky top-0 z-20 w-[110px] border-b bg-background">
+                      Phòng
+                    </TableHead>
+                    <TableHead className="sticky top-0 z-20 hidden w-[60px] border-b bg-background text-center sm:table-cell">
                       Sĩ số
                     </TableHead>
-                    <TableHead className="hidden md:table-cell">
+                    <TableHead className="sticky top-0 z-20 hidden border-b bg-background md:table-cell">
                       Tuần học
                     </TableHead>
-                    <TableHead className="w-[50px] text-center">NN</TableHead>
+                    <TableHead className="sticky top-0 z-20 w-[50px] border-b bg-background text-center">
+                      NN
+                    </TableHead>
                     {assignable ? (
                       <>
-                        <TableHead className="w-[180px]">
+                        <TableHead className="sticky top-0 z-20 w-[180px] border-b bg-background">
                           CB phụ trách
                         </TableHead>
-                        <TableHead className="w-[180px]">
+                        <TableHead className="sticky top-0 z-20 w-[180px] border-b bg-background">
                           CB giảng dạy
                         </TableHead>
                       </>

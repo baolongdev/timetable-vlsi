@@ -7,12 +7,21 @@ import { useParams } from "next/navigation"
 import { Building2, FileSpreadsheet } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
+import { ConflictBanner } from "@/components/timetable/conflict-banner"
 import { pagePad, sectionGap } from "@/components/timetable/layout"
 import { TimetableEmpty } from "@/components/timetable/timetable-empty"
-import { TimetableGrid } from "@/components/timetable/timetable-grid"
+import {
+  TimetableGrid,
+  type TimetableGridHandle,
+  type TimetableScrollState,
+} from "@/components/timetable/timetable-grid"
 import { TimetableHeader } from "@/components/timetable/timetable-header"
 import { TimetableMobile } from "@/components/timetable/timetable-mobile"
 import { TimetableToolbar } from "@/components/timetable/timetable-toolbar"
+import {
+  findScheduleConflicts,
+  summarizeConflictsFor,
+} from "@/lib/schedule-conflicts"
 
 // Dialog chỉ tải khi người dùng click card đầu tiên — giảm bundle ban đầu
 const TimetableDialog = dynamic(
@@ -22,8 +31,8 @@ const TimetableDialog = dynamic(
     ),
   { ssr: false }
 )
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+
 import {
   filterSchedules,
   getUniqueCourses,
@@ -51,7 +60,17 @@ export function TimetableView() {
     React.useState<TimetableFilters>(INITIAL_FILTERS)
   const [selected, setSelected] = React.useState<Schedule | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [scrollState, setScrollState] =
+    React.useState<TimetableScrollState>({
+      canScrollLeft: false,
+      canScrollRight: false,
+    })
   const searchInputRef = React.useRef<HTMLInputElement>(null)
+  const gridRef = React.useRef<TimetableGridHandle>(null)
+
+  const handleScrollByViewport = React.useCallback((direction: 1 | -1) => {
+    gridRef.current?.scrollByViewport(direction)
+  }, [])
 
   const { departments, hydrated } = useDepartments()
   const params = useParams<{ dept?: string }>()
@@ -92,6 +111,27 @@ export function TimetableView() {
     () => filterSchedules(baseSchedules, filters),
     [baseSchedules, filters]
   )
+
+  /** Trùng lịch trên toàn khoa (không theo filter) — đổi phân công sẽ recompute */
+  const conflictIndex = React.useMemo(
+    () => findScheduleConflicts(baseSchedules),
+    [baseSchedules]
+  )
+
+  const conflictHints = React.useMemo(() => {
+    const map = new Map<string, string>()
+    for (const id of conflictIndex.conflictIds) {
+      map.set(id, summarizeConflictsFor(id, conflictIndex))
+    }
+    return map
+  }, [conflictIndex])
+
+  const selectedConflictMessages = React.useMemo(() => {
+    if (!selected) return undefined
+    return conflictIndex.byScheduleId
+      .get(selected.id)
+      ?.map((c) => c.message)
+  }, [selected, conflictIndex])
 
   const lecturers = React.useMemo(
     () => getUniqueLecturers(baseSchedules),
@@ -227,10 +267,22 @@ export function TimetableView() {
           rooms={rooms}
           searchInputRef={searchInputRef}
           onFiltersChange={setFilters}
+          scrollState={scrollState}
+          onScrollByViewport={handleScrollByViewport}
         />
 
+        {conflictIndex.conflicts.length > 0 ? (
+          <ConflictBanner index={conflictIndex} className="shrink-0" />
+        ) : null}
+
         <main className="min-h-0 flex-1 overflow-hidden">
-          {hydrated && !dept ? (
+          {!hydrated ? (
+            <div className="flex h-full min-h-[280px] items-center justify-center px-6">
+              <p className="text-sm text-muted-foreground">
+                Đang tải thời khóa biểu&hellip;
+              </p>
+            </div>
+          ) : !dept ? (
             // Chưa có khoa nào — hướng dẫn upload
             <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-4 px-6 text-center">
               <div className="flex size-11 items-center justify-center rounded-2xl border border-border/70 bg-muted/40">
@@ -248,22 +300,26 @@ export function TimetableView() {
               <UploadAssignmentButton className="rounded-xl border border-border/80" />
             </div>
           ) : filtered.length === 0 ? (
-            dept ? (
-              <TimetableEmpty onClear={clearFilters} />
-            ) : null
+            <TimetableEmpty onClear={clearFilters} />
           ) : (
             <>
               <div className="hidden h-full md:block">
                 <TimetableGrid
+                  ref={gridRef}
                   schedules={filtered}
                   selectedId={selected?.id}
                   onSelect={handleSelect}
+                  onScrollStateChange={setScrollState}
+                  conflictIds={conflictIndex.conflictIds}
+                  conflictHints={conflictHints}
                 />
               </div>
               <div className="scrollbar-minimal h-full overflow-y-auto md:hidden">
                 <TimetableMobile
                   schedules={filtered}
                   onSelect={handleSelect}
+                  conflictIds={conflictIndex.conflictIds}
+                  conflictHints={conflictHints}
                 />
               </div>
             </>
@@ -276,6 +332,7 @@ export function TimetableView() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         assignment={currentAssignment}
+        conflictMessages={selectedConflictMessages}
         onAssignmentChange={
           dept && selected
             ? (patch) => {
@@ -290,7 +347,17 @@ export function TimetableView() {
                       ? {
                           ...prev,
                           lecturer:
-                            patch.teacher ?? patch.lead ?? prev.lecturer,
+                            patch.teacher ||
+                            patch.lead ||
+                            prev.lecturer,
+                          lead:
+                            patch.lead !== undefined
+                              ? patch.lead
+                              : prev.lead,
+                          teacher:
+                            patch.teacher !== undefined
+                              ? patch.teacher
+                              : prev.teacher,
                         }
                       : prev
                   )

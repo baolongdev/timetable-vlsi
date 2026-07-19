@@ -13,6 +13,11 @@ import {
 
 import { pagePadX } from "@/components/timetable/layout"
 import {
+  formatLecturerWithStaffId,
+  groupLecturersByRole,
+} from "@/lib/lecturer-staff"
+import { groupRoomsByBuilding } from "@/lib/room-groups"
+import {
   Menubar,
   MenubarCheckboxItem,
   MenubarContent,
@@ -158,10 +163,17 @@ export function TimetableMenubar({
                   }}
                 >
                   <MenubarRadioItem value="all">Tất cả</MenubarRadioItem>
-                  {lecturers.map((name) => (
-                    <MenubarRadioItem key={name} value={name}>
-                      {name}
-                    </MenubarRadioItem>
+                  {groupLecturersByRole(lecturers).map((group) => (
+                    <React.Fragment key={group.role}>
+                      <MenubarLabel className="text-[11px] text-muted-foreground">
+                        {group.role}
+                      </MenubarLabel>
+                      {group.names.map((name) => (
+                        <MenubarRadioItem key={name} value={name}>
+                          {formatLecturerWithStaffId(name)}
+                        </MenubarRadioItem>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </MenubarRadioGroup>
               </MenubarSubContent>
@@ -196,10 +208,17 @@ export function TimetableMenubar({
                   }}
                 >
                   <MenubarRadioItem value="all">Tất cả</MenubarRadioItem>
-                  {rooms.map((name) => (
-                    <MenubarRadioItem key={name} value={name}>
-                      {name}
-                    </MenubarRadioItem>
+                  {groupRoomsByBuilding(rooms).map((group) => (
+                    <React.Fragment key={group.building}>
+                      <MenubarLabel className="text-[11px] text-muted-foreground">
+                        Tòa {group.building}
+                      </MenubarLabel>
+                      {group.rooms.map((room) => (
+                        <MenubarRadioItem key={room} value={room}>
+                          {room}
+                        </MenubarRadioItem>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </MenubarRadioGroup>
               </MenubarSubContent>

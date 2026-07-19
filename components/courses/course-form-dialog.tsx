@@ -12,7 +12,6 @@ import {
   ComboboxContent,
   ComboboxEmpty,
   ComboboxGroup,
-  ComboboxInput,
   ComboboxItem,
   ComboboxLabel,
   ComboboxList,
@@ -30,6 +29,16 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { initialLecturers } from "@/data/lecturers"
 import { LECTURER_ROLES } from "@/types/lecturer"
 import type { Course } from "@/types/course"
@@ -49,35 +58,10 @@ const lecturerGroups = LECTURER_ROLES.map((role) => ({
     .map((l) => l.name),
 })).filter((group) => group.items.length > 0)
 
-/** Shared grouped dropdown list (by role) for the lecturer comboboxes */
-function LecturerGroupList() {
-  return (
-    <>
-      <ComboboxEmpty>Không tìm thấy giảng viên.</ComboboxEmpty>
-      <ComboboxList>
-        {(group: { value: string; items: string[] }, index: number) => (
-          <ComboboxGroup key={group.value} items={group.items}>
-            <ComboboxLabel>{group.value}</ComboboxLabel>
-            <ComboboxCollection>
-              {(item: string) => (
-                <ComboboxItem
-                  key={item}
-                  value={item}
-                  className="whitespace-nowrap"
-                >
-                  {item}
-                </ComboboxItem>
-              )}
-            </ComboboxCollection>
-            {index < lecturerGroups.length - 1 && <ComboboxSeparator />}
-          </ComboboxGroup>
-        )}
-      </ComboboxList>
-    </>
-  )
-}
+const LEAD_PLACEHOLDER = "Chọn giảng viên phụ trách…"
+const LEAD_EMPTY = "all"
 
-/** Single-select searchable combobox for the lead lecturer */
+/** Single-select: shadcn Select (Base UI / base-nova) */
 function LecturerSingleSelect({
   id,
   value,
@@ -87,26 +71,53 @@ function LecturerSingleSelect({
   value: string | null
   onValueChange: (value: string | null) => void
 }) {
+  const items = React.useMemo(
+    () => ({
+      [LEAD_EMPTY]: LEAD_PLACEHOLDER,
+      ...Object.fromEntries(initialLecturers.map((l) => [l.name, l.name])),
+    }),
+    []
+  )
+
+  const selectValue =
+    value && value.trim().length > 0 ? value.trim() : LEAD_EMPTY
+
   return (
-    <Combobox
-      autoHighlight
-      items={lecturerGroups}
-      value={value}
-      onValueChange={onValueChange}
+    <Select
+      value={selectValue}
+      onValueChange={(next) => {
+        if (!next || next === LEAD_EMPTY) onValueChange(null)
+        else onValueChange(next)
+      }}
+      items={items}
     >
-      <ComboboxInput
-        id={id}
-        placeholder="Chọn giảng viên phụ trách…"
-        showClear
-        className="h-10 w-full rounded-xl"
-      />
-      <ComboboxContent className="w-auto min-w-(--anchor-width) max-w-80">
-        <LecturerGroupList />
-      </ComboboxContent>
-    </Combobox>
+      <SelectTrigger id={id} className="h-10 w-full rounded-xl">
+        <SelectValue placeholder={LEAD_PLACEHOLDER} />
+      </SelectTrigger>
+      <SelectContent
+        alignItemWithTrigger={false}
+        className="min-w-(--anchor-width) max-w-80"
+      >
+        <SelectGroup>
+          <SelectItem value={LEAD_EMPTY}>{LEAD_PLACEHOLDER}</SelectItem>
+        </SelectGroup>
+        {lecturerGroups.map((group, index) => (
+          <SelectGroup key={group.value}>
+            {index > 0 ? <SelectSeparator /> : null}
+            <SelectLabel>{group.value}</SelectLabel>
+            {group.items.map((name) => (
+              <SelectItem key={name} value={name}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
+/** Multi-select vẫn dùng Combobox (chips + search) */
 function LecturerMultiSelect({
   id,
   value,
@@ -144,7 +155,26 @@ function LecturerMultiSelect({
         anchor={anchor}
         className="w-auto min-w-(--anchor-width) max-w-80"
       >
-        <LecturerGroupList />
+        <ComboboxEmpty>Không tìm thấy giảng viên.</ComboboxEmpty>
+        <ComboboxList>
+          {(group: { value: string; items: string[] }, index: number) => (
+            <ComboboxGroup key={group.value} items={group.items}>
+              <ComboboxLabel>{group.value}</ComboboxLabel>
+              <ComboboxCollection>
+                {(item: string) => (
+                  <ComboboxItem
+                    key={item}
+                    value={item}
+                    className="whitespace-nowrap"
+                  >
+                    {item}
+                  </ComboboxItem>
+                )}
+              </ComboboxCollection>
+              {index < lecturerGroups.length - 1 && <ComboboxSeparator />}
+            </ComboboxGroup>
+          )}
+        </ComboboxList>
       </ComboboxContent>
     </Combobox>
   )
@@ -159,7 +189,7 @@ export function CourseFormDialog({
   const isEdit = Boolean(course)
   const [code, setCode] = React.useState("")
   const [name, setName] = React.useState("")
-  const [leadLecturer, setLeadLecturer] = React.useState("none")
+  const [leadLecturer, setLeadLecturer] = React.useState<string | null>(null)
   const [theoryLecturers, setTheoryLecturers] = React.useState<string[]>([])
   const [practiceLecturers, setPracticeLecturers] = React.useState<string[]>(
     []
@@ -170,7 +200,7 @@ export function CourseFormDialog({
     if (!open) return
     setCode(course?.code ?? "")
     setName(course?.name ?? "")
-    setLeadLecturer(course?.leadLecturer ?? "none")
+    setLeadLecturer(course?.leadLecturer ?? null)
     setTheoryLecturers(course?.theoryLecturers ?? [])
     setPracticeLecturers(course?.practiceLecturers ?? [])
     setError(null)
@@ -188,7 +218,7 @@ export function CourseFormDialog({
       id: course?.id,
       code: trimmedCode,
       name: trimmedName,
-      leadLecturer: leadLecturer === "none" ? undefined : leadLecturer,
+      leadLecturer: leadLecturer ?? undefined,
       theoryLecturers,
       practiceLecturers,
     })
@@ -240,8 +270,8 @@ export function CourseFormDialog({
                 <Label htmlFor="course-lead">Giảng viên phụ trách</Label>
                 <LecturerSingleSelect
                   id="course-lead"
-                  value={leadLecturer === "none" ? null : leadLecturer}
-                  onValueChange={(value) => setLeadLecturer(value ?? "none")}
+                  value={leadLecturer}
+                  onValueChange={setLeadLecturer}
                 />
               </div>
 

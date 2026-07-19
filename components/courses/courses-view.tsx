@@ -28,11 +28,14 @@ import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+
 import {
   Select,
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -46,6 +49,10 @@ import {
 } from "@/components/ui/table"
 import { initialLecturers } from "@/data/lecturers"
 import { getSectionsForCourse } from "@/data/sections"
+import {
+  formatLecturerWithStaffId,
+  groupLecturersByRole,
+} from "@/lib/lecturer-staff"
 import {
   departmentStore,
   getEffectiveAssignment,
@@ -147,27 +154,35 @@ export function CoursesView() {
   }, [effectiveCourses, search, lecturerFilter])
 
   return (
-    <div className="flex h-dvh flex-col bg-background text-foreground">
-      <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col gap-6")}>
+    <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
+      <div
+        className={cn(
+          pagePad,
+          // min-w-0: flex child không tràn ngang; overflow-x-hidden chặn spill page
+          "flex min-h-0 min-w-0 flex-1 flex-col gap-4 sm:gap-6"
+        )}
+      >
         {/* Header */}
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-2">
+        <header className="flex min-w-0 shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
             <Button
               variant="ghost"
               size="sm"
-              className="w-fit -ml-2 text-muted-foreground"
+              className="w-fit text-muted-foreground"
               render={<Link href="/timetable" />}
               nativeButton={false}
             >
               <ArrowLeft data-icon="inline-start" />
               Timetable
             </Button>
-            <div className="flex flex-col gap-1">
-              <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            <div className="flex min-w-0 flex-col gap-1">
+              <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
                 {dept ? `Môn học — ${dept.name}` : "Môn học"}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                {dept ? (
+              <p className="text-sm break-words text-muted-foreground">
+                {!hydrated ? (
+                  <span>Đang tải môn học&hellip;</span>
+                ) : dept ? (
                   <>
                     Từ file{" "}
                     <span className="font-medium text-foreground/80">
@@ -182,14 +197,14 @@ export function CoursesView() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="scrollbar-minimal -mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 sm:gap-2">
             {departments.length > 1
               ? departments.map((d) => (
                   <Button
                     key={d.id}
                     variant={d.id === dept?.id ? "secondary" : "ghost"}
                     size="sm"
-                    className="rounded-lg"
+                    className="shrink-0 rounded-lg"
                     render={<Link href={`/courses/${d.id}`} />}
                     nativeButton={false}
                   >
@@ -200,7 +215,7 @@ export function CoursesView() {
             <Button
               variant="ghost"
               size="sm"
-              className="transition-opacity duration-150 hover:opacity-80"
+              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
               render={<Link href="/departments" />}
               nativeButton={false}
             >
@@ -210,86 +225,126 @@ export function CoursesView() {
             <Button
               variant="ghost"
               size="sm"
-              className="transition-opacity duration-150 hover:opacity-80"
+              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
               render={<Link href="/lecturers" />}
               nativeButton={false}
             >
               <Users data-icon="inline-start" />
               Giảng viên
             </Button>
-            <ThemeToggle />
+            <ThemeToggle className="shrink-0" />
           </div>
         </header>
 
         {/* Toolbar */}
-        <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
-          <div className="relative w-full max-w-sm">
+        <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
+          <div className="relative w-full min-w-0 max-w-sm">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Tìm theo mã môn, tên môn, giảng viên…"
-              className="h-10 rounded-xl pl-9 shadow-none"
+              className="h-10 w-full rounded-xl pl-9 shadow-none"
             />
           </div>
           <Select
             value={lecturerFilter}
             onValueChange={(value) => setLecturerFilter(value ?? "all")}
-            items={{
-              all: "Tất cả giảng viên",
-              ...Object.fromEntries(
-                initialLecturers.map((l) => [l.name, l.name])
-              ),
-            }}
+            items={[
+              { label: "Tất cả giảng viên", value: "all" },
+              ...initialLecturers.map((l) => ({
+                label: formatLecturerWithStaffId(l.name),
+                value: l.name,
+              })),
+            ]}
           >
-            <SelectTrigger className="h-10 w-full rounded-xl sm:w-[210px]">
+            <SelectTrigger className="h-10 w-full shrink-0 rounded-xl sm:w-[240px]">
               <SelectValue placeholder="Giảng viên" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent alignItemWithTrigger={false} className="max-w-sm">
               <SelectGroup>
                 <SelectItem value="all">Tất cả giảng viên</SelectItem>
-                {initialLecturers.map((l) => (
-                  <SelectItem key={l.id} value={l.name}>
-                    {l.name}
-                  </SelectItem>
-                ))}
               </SelectGroup>
+              {groupLecturersByRole().map((group, index) => (
+                <SelectGroup key={group.role}>
+                  {index > 0 ? <SelectSeparator /> : null}
+                  <SelectLabel>{group.role}</SelectLabel>
+                  {group.names.map((name) => {
+                    const lecturer = initialLecturers.find(
+                      (l) => l.name === name
+                    )
+                    return (
+                      <SelectItem key={name} value={name}>
+                        {lecturer?.staffId ? (
+                          <span className="flex w-full items-center justify-between gap-3">
+                            <span>{name}</span>
+                            <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                              MSCB {lecturer.staffId}
+                            </span>
+                          </span>
+                        ) : (
+                          name
+                        )}
+                      </SelectItem>
+                    )
+                  })}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Table */}
-        <div
-          className={cn(
-            "scrollbar-minimal min-h-0 flex-1 overflow-auto rounded-xl border border-border/70",
-            "[&_[data-slot=table-container]]:overflow-visible"
-          )}
-        >
+        {/*
+          Table scroll: KHÔNG set overflow-visible lên table-container
+          (sẽ phá overflow-x-auto → không cuộn ngang / lệch padding).
+        */}
+        <div className="scrollbar-minimal min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-border/70">
           <Table
+            containerClassName="overflow-visible"
             className={cn(
+              "min-w-[720px] border-separate border-spacing-0",
               "[&_td]:py-2.5 [&_th:first-child]:pl-4 [&_td:first-child]:pl-4",
               "[&_th:last-child]:pr-4 [&_td:last-child]:pr-4"
             )}
           >
-            <TableHeader className="sticky top-0 z-10 bg-background shadow-[0_1px_0_0_var(--border)] [&_tr]:border-b-0">
+            <TableHeader className="sticky top-0 z-20 [&_tr]:border-b-0">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-12 text-center">#</TableHead>
-                <TableHead className="w-[90px]">MSMH</TableHead>
-                <TableHead>Tên môn học</TableHead>
-                <TableHead className="w-[95px] text-center">
+                <TableHead className="sticky top-0 z-20 w-12 border-b bg-background text-center">
+                  #
+                </TableHead>
+                <TableHead className="sticky top-0 z-20 w-[90px] border-b bg-background">
+                  MSMH
+                </TableHead>
+                <TableHead className="sticky top-0 z-20 min-w-[160px] border-b bg-background">
+                  Tên môn học
+                </TableHead>
+                <TableHead className="sticky top-0 z-20 w-[100px] border-b bg-background text-center">
                   Nhóm lớp
                 </TableHead>
-                <TableHead className="w-[170px]">Phụ trách</TableHead>
-                <TableHead className="hidden lg:table-cell">
+                <TableHead className="sticky top-0 z-20 min-w-[140px] border-b bg-background">
+                  Phụ trách
+                </TableHead>
+                <TableHead className="sticky top-0 z-20 hidden min-w-[180px] border-b bg-background lg:table-cell">
                   Lý thuyết
                 </TableHead>
-                <TableHead className="hidden xl:table-cell">
+                <TableHead className="sticky top-0 z-20 hidden min-w-[180px] border-b bg-background xl:table-cell">
                   Thực hành
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {!hydrated ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="h-40 text-center text-muted-foreground"
+                  >
+                    <span className="text-sm text-muted-foreground">
+                      Đang tải danh sách môn&hellip;
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
@@ -310,78 +365,85 @@ export function CoursesView() {
                   ).length
 
                   return (
-                  <TableRow
-                    key={course.id}
-                    className={cn(sectionCount > 0 && "cursor-pointer")}
-                    onClick={() => {
-                      if (sectionCount > 0) openSections(course)
-                    }}
-                  >
-                    <TableCell className="text-center font-mono text-xs tabular-nums text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="font-mono text-[11px] tabular-nums text-muted-foreground"
-                      >
-                        {course.code}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium tracking-tight whitespace-normal">
-                        {course.name}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {sectionCount > 0 ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 rounded-lg px-2 font-mono text-xs tabular-nums text-muted-foreground hover:text-foreground"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openSections(course)
-                          }}
+                    <TableRow
+                      key={course.id}
+                      className={cn(sectionCount > 0 && "cursor-pointer")}
+                      onClick={() => {
+                        if (sectionCount > 0) openSections(course)
+                      }}
+                    >
+                      <TableCell className="text-center font-mono text-xs tabular-nums text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[11px] tabular-nums text-muted-foreground"
                         >
-                          <CalendarDays className="size-3.5 opacity-60" />
-                          {sectionCount} nhóm
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {course.leadLecturer ? (
-                        <LecturerChip name={course.leadLecturer} />
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {course.theoryLecturers.length > 0 ? (
-                        <div className="flex max-w-[340px] flex-wrap gap-1">
-                          {course.theoryLecturers.map((name) => (
-                            <LecturerChip key={name} name={name} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden xl:table-cell">
-                      {course.practiceLecturers.length > 0 ? (
-                        <div className="flex max-w-[340px] flex-wrap gap-1">
-                          {course.practiceLecturers.map((name) => (
-                            <LecturerChip key={name} name={name} />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-
-                  </TableRow>
+                          {course.code}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[240px] whitespace-normal">
+                        <span className="font-medium tracking-tight">
+                          {course.name}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {sectionCount > 0 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1 rounded-lg px-2 font-mono text-xs tabular-nums text-muted-foreground hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              openSections(course)
+                            }}
+                          >
+                            <CalendarDays className="size-3.5 opacity-60" />
+                            {sectionCount} nhóm
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-normal">
+                        {course.leadLecturer ? (
+                          <LecturerChip name={course.leadLecturer} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden max-w-[280px] whitespace-normal lg:table-cell">
+                        {course.theoryLecturers.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {course.theoryLecturers.map((name) => (
+                              <LecturerChip key={name} name={name} />
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden max-w-[280px] whitespace-normal xl:table-cell">
+                        {course.practiceLecturers.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {course.practiceLecturers.map((name) => (
+                              <LecturerChip key={name} name={name} />
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   )
                 })
               )}

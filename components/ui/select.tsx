@@ -122,7 +122,8 @@ function SelectItem({
       )}
       {...props}
     >
-      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+      {/* min-w-0 + wrap: tên môn dài (CO3037 — Phát triển…) không bị cắt */}
+      <SelectPrimitive.ItemText className="flex min-w-0 flex-1 gap-2 whitespace-normal">
         {children}
       </SelectPrimitive.ItemText>
       <SelectPrimitive.ItemIndicator

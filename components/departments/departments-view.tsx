@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+
 import {
   Tooltip,
   TooltipContent,
@@ -174,7 +175,13 @@ export function DepartmentsView() {
         </header>
 
         {/* Grid khoa */}
-        {!hydrated ? null : departments.length === 0 ? (
+        {!hydrated ? (
+          <div className="flex flex-1 items-center justify-center py-20">
+            <p className="text-sm text-muted-foreground">
+              Đang tải danh sách khoa&hellip;
+            </p>
+          </div>
+        ) : departments.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-20 text-center">
             <div className="flex size-11 items-center justify-center rounded-2xl border border-border/70 bg-muted/40">
               <FileSpreadsheet className="size-4 text-muted-foreground" />
