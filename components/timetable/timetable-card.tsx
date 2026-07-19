@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarRange, Clock, Copy, GraduationCap, MapPin, MoreHorizontal, Pencil } from "lucide-react"
+import { CalendarRange, Clock, Copy, GraduationCap, MapPin, MoreHorizontal, Pencil, UserCog } from "lucide-react"
 
 import { getPeriodRangeLabel } from "@/data/timetable"
 import { getLecturerColor } from "@/lib/lecturer-colors"
@@ -9,6 +9,39 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Schedule } from "@/types/timetable"
+
+/** Một dòng người phụ trách / giảng dạy trên card, tô màu theo người */
+function PersonLine({
+  icon: Icon,
+  label,
+  name,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  name?: string
+}) {
+  if (!name) {
+    return (
+      <div
+        className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground/60"
+        title={`${label}: chưa phân công`}
+      >
+        <Icon className="size-3.5 shrink-0 opacity-50" />
+        <span className="truncate italic">Chưa phân công</span>
+      </div>
+    )
+  }
+  const color = getLecturerColor(name)
+  return (
+    <div
+      className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
+      title={`${label}: ${name}`}
+    >
+      <Icon className={cn("size-3.5 shrink-0", color.text)} />
+      <span className={cn("truncate font-medium", color.text)}>{name}</span>
+    </div>
+  )
+}
 
 type TimetableCardProps = {
   schedule: Schedule
@@ -199,6 +232,16 @@ export function TimetableCard({
                     {schedule.lecturer}
                   </span>
                 </div>
+                {/* Khi hover mở rộng: đủ 2 vai trò */}
+                {isExpanded ? (
+                  <>
+                    <PersonLine
+                      icon={UserCog}
+                      label="Cán bộ phụ trách"
+                      name={schedule.lead}
+                    />
+                  </>
+                ) : null}
               </>
             )}
 
@@ -222,19 +265,17 @@ export function TimetableCard({
                 </div>
 
                 <div className="mt-0.5 flex flex-col gap-1">
-                  <div
-                    className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
-                    title={schedule.lecturer}
-                  >
-                    <GraduationCap
-                      className={cn("size-3.5 shrink-0", lecturerColor.text)}
-                    />
-                    <span
-                      className={cn("truncate font-medium", lecturerColor.text)}
-                    >
-                      {schedule.lecturer}
-                    </span>
-                  </div>
+                  {/* Cán bộ phụ trách + Cán bộ giảng dạy */}
+                  <PersonLine
+                    icon={UserCog}
+                    label="Cán bộ phụ trách"
+                    name={schedule.lead}
+                  />
+                  <PersonLine
+                    icon={GraduationCap}
+                    label="Cán bộ giảng dạy"
+                    name={schedule.teacher}
+                  />
                   <div
                     className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground"
                     title={schedule.room}

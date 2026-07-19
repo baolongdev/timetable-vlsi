@@ -75,6 +75,8 @@ export function TimetableView() {
           courseCode: s.code,
           courseName: s.courseName,
           lecturer: a.teacher || a.lead || "Chưa phân công",
+          lead: a.lead,
+          teacher: a.teacher,
           room: s.room,
           day: s.day - 1,
           startPeriod: s.startPeriod,

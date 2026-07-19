@@ -2,7 +2,12 @@ export type Schedule = {
   id: string
   courseCode: string
   courseName: string
+  /** Người hiển thị chính (CB giảng dạy, fallback CB phụ trách) */
   lecturer: string
+  /** Cán bộ phụ trách */
+  lead?: string
+  /** Cán bộ giảng dạy */
+  teacher?: string
   room: string
   day: number // 1 = Monday … 7 = Sunday
   startPeriod: number

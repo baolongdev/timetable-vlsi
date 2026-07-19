@@ -78,7 +78,7 @@ export function TimetableToolbar({
             ref={searchInputRef}
             value={filters.search}
             onChange={(e) => update({ search: e.target.value })}
-            placeholder="Search course, code, lecturer…"
+            placeholder="Tìm môn học, mã môn, giảng viên…"
             className="h-10 rounded-xl border-border/80 bg-background pr-9 pl-9 text-sm shadow-none transition-all duration-150 focus-visible:border-foreground/20"
             aria-label="Search timetable"
           />
@@ -99,13 +99,17 @@ export function TimetableToolbar({
             <Select
               value={filters.course}
               onValueChange={(value) => update({ course: value ?? "all" })}
+              items={{
+                all: "Tất cả môn học",
+                ...Object.fromEntries(courses.map((n) => [n, n])),
+              }}
             >
               <SelectTrigger className="h-10 w-[180px] rounded-xl border-border/80 shadow-none">
-                <SelectValue placeholder="Course" />
+                <SelectValue placeholder="Môn học" />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false}>
                 <SelectGroup>
-                  <SelectItem value="all">All courses</SelectItem>
+                  <SelectItem value="all">Tất cả môn học</SelectItem>
                   {courses.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
@@ -118,13 +122,17 @@ export function TimetableToolbar({
             <Select
               value={filters.lecturer}
               onValueChange={(value) => update({ lecturer: value ?? "all" })}
+              items={{
+                all: "Tất cả giảng viên",
+                ...Object.fromEntries(lecturers.map((n) => [n, n])),
+              }}
             >
               <SelectTrigger className="h-10 w-[160px] rounded-xl border-border/80 shadow-none">
-                <SelectValue placeholder="Lecturer" />
+                <SelectValue placeholder="Giảng viên" />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false}>
                 <SelectGroup>
-                  <SelectItem value="all">All lecturers</SelectItem>
+                  <SelectItem value="all">Tất cả giảng viên</SelectItem>
                   {lecturers.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
@@ -137,13 +145,17 @@ export function TimetableToolbar({
             <Select
               value={filters.room}
               onValueChange={(value) => update({ room: value ?? "all" })}
+              items={{
+                all: "Tất cả phòng",
+                ...Object.fromEntries(rooms.map((n) => [n, n])),
+              }}
             >
               <SelectTrigger className="h-10 w-[130px] rounded-xl border-border/80 shadow-none">
-                <SelectValue placeholder="Room" />
+                <SelectValue placeholder="Phòng" />
               </SelectTrigger>
               <SelectContent alignItemWithTrigger={false}>
                 <SelectGroup>
-                  <SelectItem value="all">All rooms</SelectItem>
+                  <SelectItem value="all">Tất cả phòng</SelectItem>
                   {rooms.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
@@ -165,7 +177,7 @@ export function TimetableToolbar({
               }
             >
               <Filter data-icon="inline-start" />
-              Filter
+              Bộ lọc
               {activeFilterCount > 0 && (
                 <Badge variant="secondary" className="ml-0.5 tabular-nums">
                   {activeFilterCount}
@@ -174,12 +186,12 @@ export function TimetableToolbar({
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end">
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Course</DropdownMenuLabel>
+                <DropdownMenuLabel>Môn học</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={filters.course}
                   onValueChange={(value) => update({ course: value })}
                 >
-                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="all">Tất cả</DropdownMenuRadioItem>
                   {courses.map((name) => (
                     <DropdownMenuRadioItem key={name} value={name}>
                       {name}
@@ -189,12 +201,12 @@ export function TimetableToolbar({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Lecturer</DropdownMenuLabel>
+                <DropdownMenuLabel>Giảng viên</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={filters.lecturer}
                   onValueChange={(value) => update({ lecturer: value })}
                 >
-                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="all">Tất cả</DropdownMenuRadioItem>
                   {lecturers.map((name) => (
                     <DropdownMenuRadioItem key={name} value={name}>
                       {name}
@@ -204,12 +216,12 @@ export function TimetableToolbar({
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuLabel>Room</DropdownMenuLabel>
+                <DropdownMenuLabel>Phòng</DropdownMenuLabel>
                 <DropdownMenuRadioGroup
                   value={filters.room}
                   onValueChange={(value) => update({ room: value })}
                 >
-                  <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="all">Tất cả</DropdownMenuRadioItem>
                   {rooms.map((name) => (
                     <DropdownMenuRadioItem key={name} value={name}>
                       {name}
@@ -227,7 +239,7 @@ export function TimetableToolbar({
               onClick={clearAll}
               className="text-muted-foreground"
             >
-              Clear
+              Xóa lọc
             </Button>
           )}
         </div>

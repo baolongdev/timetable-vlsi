@@ -1,6 +1,6 @@
 "use client"
 
-import { Clock, GraduationCap, MapPin } from "lucide-react"
+import { Clock, GraduationCap, MapPin, UserCog } from "lucide-react"
 
 import { pagePadX } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
@@ -75,6 +75,24 @@ export function TimetableMobile({
                           </Badge>
                         </div>
                         <div className="flex flex-col gap-1 text-[13px] text-muted-foreground">
+                          {schedule.lead ? (
+                            <div className="flex items-center gap-1.5">
+                              <UserCog
+                                className={cn(
+                                  "size-3.5 shrink-0",
+                                  getLecturerColor(schedule.lead).text
+                                )}
+                              />
+                              <span
+                                className={cn(
+                                  "font-medium",
+                                  getLecturerColor(schedule.lead).text
+                                )}
+                              >
+                                {schedule.lead}
+                              </span>
+                            </div>
+                          ) : null}
                           <div className="flex items-center gap-1.5">
                             <GraduationCap
                               className={cn(

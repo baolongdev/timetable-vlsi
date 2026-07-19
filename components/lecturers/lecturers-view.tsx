@@ -195,6 +195,10 @@ export function LecturersView({
           <Select
             value={roleFilter}
             onValueChange={(value) => setRoleFilter(value ?? "all")}
+            items={{
+              all: "Tất cả vai trò",
+              ...Object.fromEntries(LECTURER_ROLES.map((r) => [r, r])),
+            }}
           >
             <SelectTrigger className="h-10 w-full rounded-xl sm:w-[180px]">
               <SelectValue placeholder="Vai trò" />

@@ -235,6 +235,12 @@ export function CoursesView() {
           <Select
             value={lecturerFilter}
             onValueChange={(value) => setLecturerFilter(value ?? "all")}
+            items={{
+              all: "Tất cả giảng viên",
+              ...Object.fromEntries(
+                initialLecturers.map((l) => [l.name, l.name])
+              ),
+            }}
           >
             <SelectTrigger className="h-10 w-full rounded-xl sm:w-[210px]">
               <SelectValue placeholder="Giảng viên" />
