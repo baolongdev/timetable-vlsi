@@ -7,6 +7,11 @@ import { getPeriodRangeLabel } from "@/data/timetable"
 import { getLecturerColor } from "@/lib/lecturer-colors"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import type { Schedule } from "@/types/timetable"
 
@@ -143,41 +148,65 @@ export function TimetableCard({
               (isSingle || isDouble) && "hidden group-hover:flex"
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="bg-background/90"
-              onClick={(e) => {
-                e.stopPropagation()
-                onClick?.()
-              }}
-              aria-label="Open"
-            >
-              <MoreHorizontal />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="bg-background/90"
-              onClick={(e) => e.stopPropagation()}
-              aria-label="Edit"
-            >
-              <Pencil />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="bg-background/90"
-              onClick={(e) => {
-                e.stopPropagation()
-                void navigator.clipboard?.writeText(
-                  `${schedule.courseCode} ${schedule.courseName}`
-                )
-              }}
-              aria-label="Copy"
-            >
-              <Copy />
-            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="bg-background/90"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClick?.()
+                    }}
+                    aria-label="Xem chi tiết"
+                  />
+                }
+              >
+                <MoreHorizontal />
+              </TooltipTrigger>
+              <TooltipContent>Xem chi tiết</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="bg-background/90"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClick?.()
+                    }}
+                    aria-label="Phân công cán bộ"
+                  />
+                }
+              >
+                <Pencil />
+              </TooltipTrigger>
+              <TooltipContent>Phân công cán bộ</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="bg-background/90"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      void navigator.clipboard?.writeText(
+                        `${schedule.courseCode} ${schedule.courseName}`
+                      )
+                    }}
+                    aria-label="Copy mã môn"
+                  />
+                }
+              >
+                <Copy />
+              </TooltipTrigger>
+              <TooltipContent>Copy mã + tên môn</TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Shared padding + type scale with 3–4 period cards */}

@@ -3,7 +3,7 @@
 import * as React from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
+import { useParams } from "next/navigation"
 import {
   ArrowLeft,
   BookOpen,
@@ -60,8 +60,8 @@ export function CoursesView() {
   const [lecturerFilter, setLecturerFilter] = React.useState<string>("all")
 
   const { departments, hydrated } = useDepartments()
-  const searchParams = useSearchParams()
-  const deptParam = searchParams.get("dept")
+  const params = useParams<{ dept?: string }>()
+  const deptParam = params.dept ?? null
 
   // Khoa đang xem: theo ?dept=, mặc định khoa đầu tiên
   const dept = React.useMemo(
@@ -190,7 +190,7 @@ export function CoursesView() {
                     variant={d.id === dept?.id ? "secondary" : "ghost"}
                     size="sm"
                     className="rounded-lg"
-                    render={<Link href={`/courses?dept=${d.id}`} />}
+                    render={<Link href={`/courses/${d.id}`} />}
                     nativeButton={false}
                   >
                     {d.name}

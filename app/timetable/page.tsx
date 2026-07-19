@@ -1,20 +1,13 @@
 import type { Metadata } from "next"
-import { Suspense } from "react"
 
-import { TimetablePageSkeleton } from "@/components/skeletons"
-import { TimetableView } from "@/components/timetable/timetable-view"
+import { DeptIndexRedirect } from "@/components/dept-index-redirect"
 
 export const metadata: Metadata = {
   title: "Thời khóa biểu",
-  description:
-    "Lịch học theo thứ và tiết từ file phân công giảng dạy — tìm kiếm, lọc và xuất CSV.",
+  description: "Chọn khoa để xem thời khóa biểu.",
   alternates: { canonical: "/timetable" },
 }
 
-export default function TimetablePage() {
-  return (
-    <Suspense fallback={<TimetablePageSkeleton />}>
-      <TimetableView />
-    </Suspense>
-  )
+export default function TimetableIndexPage() {
+  return <DeptIndexRedirect base="/timetable" />
 }

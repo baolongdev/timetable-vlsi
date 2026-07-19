@@ -1,20 +1,13 @@
 import type { Metadata } from "next"
-import { Suspense } from "react"
 
-import { CoursesView } from "@/components/courses/courses-view"
-import { TablePageSkeleton } from "@/components/skeletons"
+import { DeptIndexRedirect } from "@/components/dept-index-redirect"
 
 export const metadata: Metadata = {
   title: "Môn học",
-  description:
-    "Danh sách môn học theo khoa — nhóm lớp, tiết học, tuần học và phân công giảng dạy.",
+  description: "Chọn khoa để xem danh sách môn học.",
   alternates: { canonical: "/courses" },
 }
 
-export default function CoursesPage() {
-  return (
-    <Suspense fallback={<TablePageSkeleton />}>
-      <CoursesView />
-    </Suspense>
-  )
+export default function CoursesIndexPage() {
+  return <DeptIndexRedirect base="/courses" />
 }

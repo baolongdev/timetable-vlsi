@@ -35,6 +35,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { initialLecturers } from "@/data/lecturers"
 import { getLecturerColor } from "@/lib/lecturer-colors"
 import { getInitials } from "@/lib/person-color"
@@ -315,23 +320,37 @@ export function LecturersView({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => openEdit(lecturer)}
-                          aria-label={`Sửa ${lecturer.name}`}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => openDelete(lecturer)}
-                          aria-label={`Xóa ${lecturer.name}`}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => openEdit(lecturer)}
+                                aria-label={`Sửa ${lecturer.name}`}
+                              />
+                            }
+                          >
+                            <Pencil />
+                          </TooltipTrigger>
+                          <TooltipContent>Sửa thông tin</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => openDelete(lecturer)}
+                                aria-label={`Xóa ${lecturer.name}`}
+                                className="text-muted-foreground hover:text-destructive"
+                              />
+                            }
+                          >
+                            <Trash2 />
+                          </TooltipTrigger>
+                          <TooltipContent>Xóa giảng viên</TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>

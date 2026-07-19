@@ -18,6 +18,11 @@ import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   departmentStore,
   useDepartments,
   type Department,
@@ -61,15 +66,22 @@ function DepartmentCard({ dept }: { dept: Department }) {
             {dept.fileName} · {formatDate(dept.uploadedAt)}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => departmentStore.removeDepartment(dept.id)}
-          aria-label={`Xóa ${dept.name}`}
-          className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-        >
-          <Trash2 />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => departmentStore.removeDepartment(dept.id)}
+                aria-label={`Xóa ${dept.name}`}
+                className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+              />
+            }
+          >
+            <Trash2 />
+          </TooltipTrigger>
+          <TooltipContent>Xóa khoa khỏi hệ thống</TooltipContent>
+        </Tooltip>
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -94,7 +106,7 @@ function DepartmentCard({ dept }: { dept: Department }) {
           variant="outline"
           size="sm"
           className="flex-1 rounded-xl"
-          render={<Link href={`/timetable?dept=${dept.id}`} />}
+          render={<Link href={`/timetable/${dept.id}`} />}
           nativeButton={false}
         >
           <CalendarDays data-icon="inline-start" />
@@ -104,7 +116,7 @@ function DepartmentCard({ dept }: { dept: Department }) {
           variant="outline"
           size="sm"
           className="flex-1 rounded-xl"
-          render={<Link href={`/courses?dept=${dept.id}`} />}
+          render={<Link href={`/courses/${dept.id}`} />}
           nativeButton={false}
         >
           <BookOpen data-icon="inline-start" />

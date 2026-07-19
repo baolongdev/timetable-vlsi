@@ -5,6 +5,11 @@ import { BookOpen, Download, Users } from "lucide-react"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 
 type TimetableHeaderProps = {
@@ -48,15 +53,24 @@ export function TimetableHeader({
 
       <div className="flex flex-wrap items-center gap-1">
         {importSlot}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onExport}
-          className="transition-opacity duration-150 hover:opacity-80"
-        >
-          <Download data-icon="inline-start" />
-          Export
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onExport}
+                className="transition-opacity duration-150 hover:opacity-80"
+              />
+            }
+          >
+            <Download data-icon="inline-start" />
+            Export
+          </TooltipTrigger>
+          <TooltipContent>
+            Tải danh sách đang lọc dưới dạng CSV
+          </TooltipContent>
+        </Tooltip>
         <Button
           variant="ghost"
           size="sm"
