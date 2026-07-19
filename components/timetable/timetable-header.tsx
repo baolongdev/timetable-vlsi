@@ -4,6 +4,7 @@ import Link from "next/link"
 import { BookOpen, Download, Users } from "lucide-react"
 
 import { TourHelpButton } from "@/components/onboarding-tour"
+import { PresenceHeaderControl } from "@/components/presence-widget"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
@@ -103,6 +104,7 @@ export function TimetableHeader({
           Giảng viên
         </Button>
         <TourHelpButton />
+        <PresenceHeaderControl />
         <span data-tour="theme-toggle" className="inline-flex">
           <ThemeToggle className="transition-opacity duration-150 hover:opacity-80" />
         </span>

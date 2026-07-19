@@ -15,6 +15,7 @@ import {
 import { DeptPolicyDialog } from "@/components/dept-policy-dialog"
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { TourHelpButton } from "@/components/onboarding-tour"
+import { PresenceHeaderControl } from "@/components/presence-widget"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
@@ -190,6 +191,7 @@ export function DepartmentsView() {
               Giảng viên
             </Button>
             <TourHelpButton />
+            <PresenceHeaderControl />
             <span data-tour="theme-toggle" className="inline-flex">
               <ThemeToggle />
             </span>

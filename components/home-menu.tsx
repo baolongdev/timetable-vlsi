@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 
 import type { FlowingMenuItem } from "@/components/flowing-menu"
 import { TourHelpButton } from "@/components/onboarding-tour"
+import { PresenceHeaderControl } from "@/components/presence-widget"
 import { Skeleton } from "@/components/ui/skeleton"
 
 // GSAP menu nặng — tải lười với skeleton thay thế
@@ -68,8 +69,9 @@ export function HomeMenu() {
         />
       </div>
       <div className="pointer-events-none absolute top-4 right-4 z-20 sm:top-6 sm:right-6">
-        <div className="pointer-events-auto rounded-xl border border-border/80 bg-background/90 shadow-sm backdrop-blur-sm">
+        <div className="pointer-events-auto flex items-center gap-0.5 rounded-xl border border-border/80 bg-background/90 p-0.5 shadow-sm backdrop-blur-sm">
           <TourHelpButton />
+          <PresenceHeaderControl />
         </div>
       </div>
     </div>

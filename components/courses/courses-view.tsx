@@ -15,6 +15,7 @@ import {
 
 import { LecturerChip } from "@/components/lecturer-chip"
 import { TourHelpButton } from "@/components/onboarding-tour"
+import { PresenceHeaderControl } from "@/components/presence-widget"
 
 // Dialog nặng (bảng nhóm lớp + combobox phân công) — tải khi mở lần đầu
 const CourseSectionsDialog = dynamic(
@@ -238,6 +239,7 @@ export function CoursesView() {
               Giảng viên
             </Button>
             <TourHelpButton className="shrink-0" />
+            <PresenceHeaderControl className="shrink-0" />
             <span data-tour="theme-toggle" className="inline-flex shrink-0">
               <ThemeToggle className="shrink-0" />
             </span>

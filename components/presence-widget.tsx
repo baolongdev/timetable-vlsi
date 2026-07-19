@@ -33,14 +33,24 @@ import type { PresenceUser } from "@/types/presence"
 const SESSION_KEY = "vlsi-presence-session-v1"
 const PROFILE_KEY = "vlsi-presence-profile-v1"
 const HEARTBEAT_MS = 15_000
-const MAX_AVATARS = 5
+const MAX_AVATARS = 4
 
 type Profile = {
   displayName: string
   anonymous: boolean
-  /** Đã chọn tên/ẩn danh ít nhất 1 lần */
   ready: boolean
 }
+
+type PresenceContextValue = {
+  users: PresenceUser[]
+  count: number
+  configured: boolean | null
+  profile: Profile
+  openNameDialog: () => void
+  ready: boolean
+}
+
+const PresenceContext = React.createContext<PresenceContextValue | null>(null)
 
 function loadSessionId(): string {
   if (typeof window === "undefined") return ""
@@ -117,10 +127,9 @@ async function heartbeat(body: {
 }
 
 /**
- * Widget góc màn hình: số người online + avatar.
- * Tên hoặc ẩn danh; heartbeat Mongo (miễn phí trong Atlas free).
+ * Provider: heartbeat + dialog tên. Gắn 1 lần trong layout.
  */
-export function PresenceWidget() {
+export function PresenceProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sessionId] = React.useState(() => loadSessionId())
   const [profile, setProfile] = React.useState<Profile>(() => loadProfile())
@@ -129,7 +138,6 @@ export function PresenceWidget() {
   const [nameOpen, setNameOpen] = React.useState(false)
   const [nameDraft, setNameDraft] = React.useState("")
 
-  // Lần đầu: mở dialog chọn tên
   React.useEffect(() => {
     if (!profile.ready) {
       setNameDraft(profile.displayName)
@@ -137,13 +145,15 @@ export function PresenceWidget() {
     }
   }, [profile.ready, profile.displayName])
 
-  const applyProfile = React.useCallback(
-    (next: Profile) => {
-      setProfile(next)
-      saveProfile(next)
-    },
-    []
-  )
+  const applyProfile = React.useCallback((next: Profile) => {
+    setProfile(next)
+    saveProfile(next)
+  }, [])
+
+  const openNameDialog = React.useCallback(() => {
+    setNameDraft(profile.displayName)
+    setNameOpen(true)
+  }, [profile.displayName])
 
   const tick = React.useCallback(async () => {
     if (!sessionId || !profile.ready) return
@@ -163,7 +173,6 @@ export function PresenceWidget() {
         }))
       )
     } else {
-      // Không Mongo: chỉ hiện bản thân
       setUsers([
         {
           sessionId,
@@ -204,10 +213,6 @@ export function PresenceWidget() {
     }
   }, [profile.ready, tick, sessionId])
 
-  const count = users.length
-  const shown = users.slice(0, MAX_AVATARS)
-  const extra = Math.max(0, count - MAX_AVATARS)
-
   const saveName = (anonymous: boolean) => {
     const name = nameDraft.trim()
     if (!anonymous && !name) return
@@ -219,92 +224,21 @@ export function PresenceWidget() {
     setNameOpen(false)
   }
 
-  if (!profile.ready && !nameOpen) return null
+  const value = React.useMemo<PresenceContextValue>(
+    () => ({
+      users,
+      count: users.length,
+      configured,
+      profile,
+      openNameDialog,
+      ready: profile.ready,
+    }),
+    [users, configured, profile, openNameDialog]
+  )
 
   return (
-    <>
-      <div
-        className={cn(
-          "pointer-events-none fixed right-3 bottom-3 z-40 sm:right-5 sm:bottom-5",
-          "flex flex-col items-end gap-2"
-        )}
-      >
-        <div className="pointer-events-auto flex items-center gap-2 rounded-2xl border border-border/80 bg-background/95 px-2.5 py-1.5 shadow-md backdrop-blur-sm">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="button"
-                  className="flex items-center gap-2 rounded-xl px-1 py-0.5 text-left transition-opacity hover:opacity-80"
-                  onClick={() => {
-                    setNameDraft(profile.displayName)
-                    setNameOpen(true)
-                  }}
-                  aria-label="Đổi tên hiển thị"
-                />
-              }
-            >
-              <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Users className="size-3.5" />
-                <span className="tabular-nums text-foreground">{count || 1}</span>
-                <span className="hidden sm:inline">đang xem</span>
-              </span>
-              {count > 0 ? (
-                <AvatarGroup className="pl-0.5">
-                  {shown.map((u) => {
-                    const label = u.anonymous ? "Ẩn danh" : u.displayName
-                    const color = getPersonColor(u.sessionId + label)
-                    const initials = u.anonymous
-                      ? "?"
-                      : getInitials(u.displayName) || "?"
-                    return (
-                      <Avatar
-                        key={u.sessionId}
-                        size="sm"
-                        title={label + (u.isSelf ? " (bạn)" : "")}
-                      >
-                        <AvatarFallback
-                          className={cn(
-                            "text-[10px] font-semibold",
-                            color.bg,
-                            color.text
-                          )}
-                        >
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                    )
-                  })}
-                  {extra > 0 ? (
-                    <AvatarGroupCount className="size-6 text-[10px] font-medium">
-                      +{extra}
-                    </AvatarGroupCount>
-                  ) : null}
-                </AvatarGroup>
-              ) : null}
-              <Pencil className="size-3 text-muted-foreground opacity-60" />
-            </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-[220px]">
-              <p className="font-medium">
-                {count} người đang xem
-                {configured === false ? " (chỉ máy này)" : ""}
-              </p>
-              <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
-                {users.slice(0, 8).map((u) => (
-                  <li key={u.sessionId}>
-                    {u.anonymous ? "Ẩn danh" : u.displayName}
-                    {u.isSelf ? " · bạn" : ""}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">
-                Bấm để đổi tên / ẩn danh
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
-
+    <PresenceContext.Provider value={value}>
+      {children}
       <Dialog open={nameOpen} onOpenChange={setNameOpen}>
         <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-sm">
           <div className="flex flex-col gap-4 p-6">
@@ -367,6 +301,106 @@ export function PresenceWidget() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </PresenceContext.Provider>
   )
+}
+
+function usePresence() {
+  return React.useContext(PresenceContext)
+}
+
+/**
+ * Chip gọn — đặt cùng hàng Khoa · Export · Môn học · Giảng viên · Hướng dẫn.
+ */
+export function PresenceHeaderControl({ className }: { className?: string }) {
+  const ctx = usePresence()
+  if (!ctx) return null
+
+  const { users, count, configured, openNameDialog, ready } = ctx
+  const shown = users.slice(0, MAX_AVATARS)
+  const extra = Math.max(0, count - MAX_AVATARS)
+  const displayCount = Math.max(count, ready ? 1 : 0)
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            data-tour="presence"
+            className={cn(
+              "h-8 gap-1.5 px-2 transition-opacity duration-150 hover:opacity-80",
+              className
+            )}
+            onClick={openNameDialog}
+            aria-label="Người đang xem — bấm để đổi tên"
+          />
+        }
+      >
+        <Users data-icon="inline-start" className="size-3.5 opacity-70" />
+        <span className="tabular-nums">{displayCount || "—"}</span>
+        <span className="hidden sm:inline">đang xem</span>
+        {shown.length > 0 ? (
+          <AvatarGroup className="ml-0.5">
+            {shown.map((u) => {
+              const label = u.anonymous ? "Ẩn danh" : u.displayName
+              const color = getPersonColor(u.sessionId + label)
+              const initials = u.anonymous
+                ? "?"
+                : getInitials(u.displayName) || "?"
+              return (
+                <Avatar key={u.sessionId} size="sm">
+                  <AvatarFallback
+                    className={cn(
+                      "text-[10px] font-semibold",
+                      color.bg,
+                      color.text
+                    )}
+                  >
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              )
+            })}
+            {extra > 0 ? (
+              <AvatarGroupCount className="size-6 text-[10px] font-medium">
+                +{extra}
+              </AvatarGroupCount>
+            ) : null}
+          </AvatarGroup>
+        ) : null}
+        <Pencil className="size-3 opacity-50" />
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-[240px]">
+        <p className="font-medium">
+          {displayCount} người đang xem
+          {configured === false ? " (chỉ máy này)" : ""}
+        </p>
+        {users.length > 0 ? (
+          <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+            {users.slice(0, 8).map((u) => (
+              <li key={u.sessionId}>
+                {u.anonymous ? "Ẩn danh" : u.displayName}
+                {u.isSelf ? " · bạn" : ""}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Chọn tên hoặc ẩn danh để hiện mặt
+          </p>
+        )}
+        <p className="mt-1.5 text-[11px] text-muted-foreground">
+          Bấm để đổi tên / ẩn danh
+        </p>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** @deprecated Dùng PresenceProvider + PresenceHeaderControl */
+export function PresenceWidget() {
+  return null
 }

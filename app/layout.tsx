@@ -4,7 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { ContentProtection } from "@/components/content-protection"
 import { HelpDialog } from "@/components/help-dialog"
 import { OnboardingTour } from "@/components/onboarding-tour"
-import { PresenceWidget } from "@/components/presence-widget"
+import { PresenceProvider } from "@/components/presence-widget"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -93,12 +93,13 @@ export default function RootLayout({
       <body className="relative min-h-dvh bg-background text-foreground">
         <ThemeProvider>
           <TooltipProvider>
-            <ContentProtection />
-            {children}
-            <HelpDialog />
-            <OnboardingTour />
-            <PresenceWidget />
-            <Toaster />
+            <PresenceProvider>
+              <ContentProtection />
+              {children}
+              <HelpDialog />
+              <OnboardingTour />
+              <Toaster />
+            </PresenceProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

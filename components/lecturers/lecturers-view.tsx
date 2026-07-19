@@ -15,6 +15,7 @@ import {
 import { LecturerDeleteDialog } from "@/components/lecturers/lecturer-delete-dialog"
 import { LecturerFormDialog } from "@/components/lecturers/lecturer-form-dialog"
 import { TourHelpButton } from "@/components/onboarding-tour"
+import { PresenceHeaderControl } from "@/components/presence-widget"
 import { pagePad } from "@/components/timetable/layout"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Badge } from "@/components/ui/badge"
@@ -158,6 +159,7 @@ export function LecturersView({
               Môn học
             </Button>
             <TourHelpButton />
+            <PresenceHeaderControl />
             <span data-tour="theme-toggle" className="inline-flex">
               <ThemeToggle />
             </span>
