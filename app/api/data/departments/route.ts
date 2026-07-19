@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
+import { requestHasValidPolicyPassword } from "@/lib/dept-policy"
 import {
   departmentToDoc,
   departmentsCol,
@@ -23,7 +24,10 @@ function isDepartment(v: unknown): v is Department {
   )
 }
 
-/** PUT — thay thế toàn bộ danh sách khoa (sync full) */
+/** PUT — sync danh sách khoa.
+ *  Xóa khoa khỏi server chỉ khi có mật khẩu policy (tránh wipe qua sync).
+ *  Không có pass: chỉ upsert, không delete.
+ */
 export async function PUT(request: NextRequest) {
   if (!hasMongo()) {
     return NextResponse.json({ error: "mongo_not_configured" }, { status: 503 })
@@ -36,15 +40,17 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "invalid_body" }, { status: 400 })
     }
 
+    const canDelete = requestHasValidPolicyPassword(request.headers)
     const now = Date.now()
     const col = await departmentsCol()
     const ids = new Set(list.map((d) => d.id))
 
-    // Xóa khoa không còn trên client
-    if (ids.size === 0) {
-      await col.deleteMany({})
-    } else {
-      await col.deleteMany({ _id: { $nin: [...ids] } })
+    if (canDelete) {
+      if (ids.size === 0) {
+        await col.deleteMany({})
+      } else {
+        await col.deleteMany({ _id: { $nin: [...ids] } })
+      }
     }
 
     if (list.length > 0) {
@@ -59,17 +65,26 @@ export async function PUT(request: NextRequest) {
     }
 
     await touchMeta({ departmentsAt: now })
-    return NextResponse.json({ ok: true, updatedAt: now, count: list.length })
+    return NextResponse.json({
+      ok: true,
+      updatedAt: now,
+      count: list.length,
+      deletedMissing: canDelete,
+    })
   } catch (e) {
     console.error("[api/data/departments PUT]", e)
     return NextResponse.json({ error: "mongo_error" }, { status: 502 })
   }
 }
 
-/** POST — upsert một khoa */
+/** POST — upsert một khoa (cần mật khẩu policy) */
 export async function POST(request: NextRequest) {
   if (!hasMongo()) {
     return NextResponse.json({ error: "mongo_not_configured" }, { status: 503 })
+  }
+
+  if (!requestHasValidPolicyPassword(request.headers)) {
+    return NextResponse.json({ error: "policy_password_required" }, { status: 401 })
   }
 
   try {

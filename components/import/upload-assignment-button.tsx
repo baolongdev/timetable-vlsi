@@ -3,6 +3,7 @@
 import * as React from "react"
 import { FileSpreadsheet, Loader2, Table2 } from "lucide-react"
 
+import { DeptPolicyDialog } from "@/components/dept-policy-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -31,6 +32,7 @@ type UploadAssignmentButtonProps = {
 /**
  * Upload file Excel phân công (.xlsx). Mỗi sheet hợp lệ = một khoa/tổ —
  * dialog cho tick chọn những sheet cần đưa vào hệ thống.
+ * Thêm khoa yêu cầu mật khẩu policy (ACLAB2023 / DEPT_POLICY_PASSWORD).
  */
 export function UploadAssignmentButton({
   onImported,
@@ -44,6 +46,8 @@ export function UploadAssignmentButton({
   const [fileName, setFileName] = React.useState("")
   const [parsed, setParsed] = React.useState<ParsedWorkbook | null>(null)
   const [chosen, setChosen] = React.useState<Set<string>>(new Set())
+
+  const [policyOpen, setPolicyOpen] = React.useState(false)
 
   const handleFile = async (file: File) => {
     setBusy(true)
@@ -78,19 +82,23 @@ export function UploadAssignmentButton({
     })
   }
 
-  const confirmImport = () => {
+  const runImport = () => {
     if (!parsed || chosen.size === 0) return
     const ids: string[] = []
     for (const sheet of parsed.sheets) {
       if (!chosen.has(sheet.name)) continue
       const sections = parseWorkbookSheet(parsed, sheet.name)
-      ids.push(
-        departmentStore.addDepartment(sheet.name, fileName, sections)
-      )
+      ids.push(departmentStore.addDepartment(sheet.name, fileName, sections))
     }
     setPickerOpen(false)
     setParsed(null)
     onImported?.(ids)
+  }
+
+  /** Sau khi chọn sheet → yêu cầu mật khẩu rồi mới import */
+  const requestImport = () => {
+    if (!parsed || chosen.size === 0) return
+    setPolicyOpen(true)
   }
 
   return (
@@ -137,7 +145,7 @@ export function UploadAssignmentButton({
                   {fileName}
                 </span>{" "}
                 có {parsed?.sheets.length} sheet phân công. Mỗi sheet được
-                lưu thành một khoa riêng.
+                lưu thành một khoa riêng. Bước tiếp theo cần mật khẩu quản trị.
               </DialogDescription>
             </DialogHeader>
 
@@ -192,13 +200,22 @@ export function UploadAssignmentButton({
               type="button"
               className="rounded-xl"
               disabled={chosen.size === 0}
-              onClick={confirmImport}
+              onClick={requestImport}
             >
               Import {chosen.size > 0 ? `${chosen.size} khoa` : ""}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeptPolicyDialog
+        open={policyOpen}
+        onOpenChange={setPolicyOpen}
+        title="Xác nhận thêm khoa"
+        description={`Nhập mật khẩu quản trị để import ${chosen.size} khoa/tổ vào hệ thống.`}
+        confirmLabel="Import"
+        onVerified={runImport}
+      />
     </>
   )
 }

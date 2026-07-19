@@ -1,6 +1,7 @@
 /**
  * Client helpers gọi /api/data/* — không throw ra UI nếu Mongo tắt.
  */
+import { policyPasswordHeaders } from "@/lib/dept-policy-client"
 import type { Department } from "@/types/department"
 import type { Assignment } from "@/types/import"
 import type { Lecturer } from "@/types/lecturer"
@@ -73,9 +74,13 @@ export async function pushDepartments(
   departments: Department[]
 ): Promise<boolean> {
   try {
+    // Gửi pass nếu đã xác thực trong session (cho phép xóa khoa khi sync)
     const res = await fetch("/api/data/departments", {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...policyPasswordHeaders(),
+      },
       body: JSON.stringify({ departments }),
     })
     return res.ok
@@ -88,7 +93,10 @@ export async function pushOneDepartment(dept: Department): Promise<boolean> {
   try {
     const res = await fetch("/api/data/departments", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...policyPasswordHeaders(),
+      },
       body: JSON.stringify({ department: dept }),
     })
     return res.ok
@@ -101,6 +109,9 @@ export async function deleteDepartmentRemote(id: string): Promise<boolean> {
   try {
     const res = await fetch(`/api/data/departments/${encodeURIComponent(id)}`, {
       method: "DELETE",
+      headers: {
+        ...policyPasswordHeaders(),
+      },
     })
     return res.ok || res.status === 404
   } catch {

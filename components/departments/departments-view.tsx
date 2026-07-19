@@ -12,6 +12,7 @@ import {
   Users,
 } from "lucide-react"
 
+import { DeptPolicyDialog } from "@/components/dept-policy-dialog"
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { TourHelpButton } from "@/components/onboarding-tour"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -41,7 +42,13 @@ function formatDate(ts: number): string {
   })
 }
 
-function DepartmentCard({ dept }: { dept: Department }) {
+function DepartmentCard({
+  dept,
+  onRequestDelete,
+}: {
+  dept: Department
+  onRequestDelete: (dept: Department) => void
+}) {
   const courseCount = new Set(dept.sections.map((s) => s.code)).size
   const assignedCount = dept.sections.filter((s) => {
     const a = dept.assignments[`${s.code}-${s.group}`]
@@ -74,7 +81,7 @@ function DepartmentCard({ dept }: { dept: Department }) {
               <Button
                 variant="ghost"
                 size="icon-sm"
-                onClick={() => departmentStore.removeDepartment(dept.id)}
+                onClick={() => onRequestDelete(dept)}
                 aria-label={`Xóa ${dept.name}`}
                 className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
               />
@@ -82,7 +89,7 @@ function DepartmentCard({ dept }: { dept: Department }) {
           >
             <Trash2 />
           </TooltipTrigger>
-          <TooltipContent>Xóa khoa khỏi hệ thống</TooltipContent>
+          <TooltipContent>Xóa khoa (cần mật khẩu)</TooltipContent>
         </Tooltip>
       </div>
 
@@ -131,6 +138,9 @@ function DepartmentCard({ dept }: { dept: Department }) {
 
 export function DepartmentsView() {
   const { departments, hydrated, remoteConfigured } = useDepartments()
+  const [deleteTarget, setDeleteTarget] = React.useState<Department | null>(
+    null
+  )
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -207,7 +217,8 @@ export function DepartmentsView() {
               </p>
               <p className="text-sm text-muted-foreground">
                 Upload file Excel phân công giảng dạy (.xlsx) — mỗi sheet
-                (CNPM, KTMT, KhoaQuanly…) sẽ thành một khoa riêng.
+                (CNPM, KTMT, KhoaQuanly…) sẽ thành một khoa riêng. Cần mật
+                khẩu quản trị khi import.
               </p>
             </div>
             <UploadAssignmentButton className="rounded-xl border border-border/80" />
@@ -218,7 +229,11 @@ export function DepartmentsView() {
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
           >
             {departments.map((dept) => (
-              <DepartmentCard key={dept.id} dept={dept} />
+              <DepartmentCard
+                key={dept.id}
+                dept={dept}
+                onRequestDelete={setDeleteTarget}
+              />
             ))}
           </div>
         )}
@@ -227,10 +242,31 @@ export function DepartmentsView() {
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <ArrowRight className="size-3" />
             Upload lại file cùng sheet sẽ cập nhật khoa tương ứng, phân công
-            đã chọn được giữ nguyên.
+            đã chọn được giữ nguyên. Thêm / xóa khoa cần mật khẩu quản trị.
           </p>
         ) : null}
       </div>
+
+      <DeptPolicyDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title="Xác nhận xóa khoa"
+        description={
+          deleteTarget
+            ? `Nhập mật khẩu quản trị để xóa khoa «${deleteTarget.name}» và toàn bộ nhóm lớp / phân công của khoa đó.`
+            : "Nhập mật khẩu quản trị để xóa khoa."
+        }
+        confirmLabel="Xóa khoa"
+        destructive
+        onVerified={() => {
+          if (deleteTarget) {
+            departmentStore.removeDepartment(deleteTarget.id)
+            setDeleteTarget(null)
+          }
+        }}
+      />
     </div>
   )
 }

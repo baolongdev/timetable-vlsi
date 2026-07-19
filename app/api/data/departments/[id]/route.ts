@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 
+import { requestHasValidPolicyPassword } from "@/lib/dept-policy"
 import { departmentsCol, hasMongo, touchMeta } from "@/lib/mongo"
 
 export const dynamic = "force-dynamic"
 
 type Ctx = { params: Promise<{ id: string }> }
 
-/** DELETE /api/data/departments/[id] */
-export async function DELETE(_request: NextRequest, ctx: Ctx) {
+/** DELETE /api/data/departments/[id] — cần mật khẩu policy */
+export async function DELETE(request: NextRequest, ctx: Ctx) {
   if (!hasMongo()) {
     return NextResponse.json({ error: "mongo_not_configured" }, { status: 503 })
+  }
+
+  if (!requestHasValidPolicyPassword(request.headers)) {
+    return NextResponse.json({ error: "policy_password_required" }, { status: 401 })
   }
 
   try {
