@@ -9,13 +9,16 @@ import { cn } from "@/lib/utils"
 
 type TimetableHeaderProps = {
   onExport: () => void
-  /** Slot cho nút upload Excel + badge file đã import */
+  /** Tên khoa / tổ đang xem */
+  departmentName?: string
+  /** Slot cho nút chuyển khoa / upload */
   importSlot?: React.ReactNode
   className?: string
 }
 
 export function TimetableHeader({
   onExport,
+  departmentName,
   importSlot,
   className,
 }: TimetableHeaderProps) {
@@ -28,12 +31,18 @@ export function TimetableHeader({
     >
       <div className="flex min-w-0 flex-col gap-1">
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
-          Timetable
+          {departmentName ?? "Timetable"}
         </h1>
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground/70">Semester 1</span>
           <span className="mx-1.5 text-border">•</span>
           <span>2026</span>
+          {departmentName ? (
+            <>
+              <span className="mx-1.5 text-border">•</span>
+              <span>Thời khóa biểu</span>
+            </>
+          ) : null}
         </p>
       </div>
 

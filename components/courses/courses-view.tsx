@@ -3,30 +3,19 @@
 import * as React from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   BookOpen,
+  Building2,
   CalendarDays,
-  Pencil,
-  Plus,
   Search,
-  Trash2,
   Users,
-  X,
 } from "lucide-react"
 
-import { CourseDeleteDialog } from "@/components/courses/course-delete-dialog"
-import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { LecturerChip } from "@/components/lecturer-chip"
 
-// Dialog nặng (combobox, bảng nhóm lớp) — tải khi mở lần đầu
-const CourseFormDialog = dynamic(
-  () =>
-    import("@/components/courses/course-form-dialog").then(
-      (m) => m.CourseFormDialog
-    ),
-  { ssr: false }
-)
+// Dialog nặng (bảng nhóm lớp + combobox phân công) — tải khi mở lần đầu
 const CourseSectionsDialog = dynamic(
   () =>
     import("@/components/courses/course-sections-dialog").then(
@@ -55,33 +44,36 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { initialCourses } from "@/data/courses"
 import { initialLecturers } from "@/data/lecturers"
 import { getSectionsForCourse } from "@/data/sections"
-import { useImportStore } from "@/lib/use-import-store"
+import {
+  departmentStore,
+  getEffectiveAssignment,
+  useDepartments,
+} from "@/lib/department-store"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types/course"
 import type { CourseSection } from "@/types/section"
 
-export function CoursesView({
-  initialData = initialCourses,
-  sections,
-}: {
-  /** Courses from the server (DB); falls back to static data */
-  initialData?: Course[]
-  /** Sections from the server (DB); falls back to static data */
-  sections?: CourseSection[]
-}) {
-  const [courses, setCourses] = React.useState<Course[]>(initialData)
+export function CoursesView() {
   const [search, setSearch] = React.useState("")
   const [lecturerFilter, setLecturerFilter] = React.useState<string>("all")
 
-  const importStore = useImportStore()
+  const { departments, hydrated } = useDepartments()
+  const searchParams = useSearchParams()
+  const deptParam = searchParams.get("dept")
 
-  // Chế độ file phân công: sections + danh sách môn sinh từ file Excel
+  // Khoa đang xem: theo ?dept=, mặc định khoa đầu tiên
+  const dept = React.useMemo(
+    () =>
+      departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
+    [departments, deptParam]
+  )
+
+  // Dữ liệu từ khoa đang chọn
   const effectiveSections = React.useMemo<CourseSection[]>(() => {
-    if (!importStore.hasImport) return sections ?? []
-    return importStore.sections.map((s) => ({
+    if (!dept) return []
+    return dept.sections.map((s) => ({
       code: s.code,
       courseName: s.courseName,
       group: s.group,
@@ -93,14 +85,14 @@ export function CoursesView({
       weeksLabel: s.weeksLabel,
       language: s.language,
     }))
-  }, [importStore, sections])
+  }, [dept])
 
   const effectiveCourses = React.useMemo<Course[]>(() => {
-    if (!importStore.hasImport) return courses
+    if (!dept) return []
     // Gom môn từ file: mỗi MMH một dòng; phụ trách = lead được chọn nhiều nhất
     const byCode = new Map<string, Course & { _leads: string[] }>()
-    for (const s of importStore.sections) {
-      const a = importStore.getAssignment(s)
+    for (const s of dept.sections) {
+      const a = getEffectiveAssignment(dept, s)
       let entry = byCode.get(s.code)
       if (!entry) {
         entry = {
@@ -122,13 +114,7 @@ export function CoursesView({
       ...c,
       leadLecturer: _leads[0],
     }))
-  }, [importStore, courses])
-
-  const [formOpen, setFormOpen] = React.useState(false)
-  const [editing, setEditing] = React.useState<Course | null>(null)
-
-  const [deleteOpen, setDeleteOpen] = React.useState(false)
-  const [deleting, setDeleting] = React.useState<Course | null>(null)
+  }, [dept])
 
   const [sectionsOpen, setSectionsOpen] = React.useState(false)
   const [viewing, setViewing] = React.useState<Course | null>(null)
@@ -160,40 +146,6 @@ export function CoursesView({
     })
   }, [effectiveCourses, search, lecturerFilter])
 
-  const openCreate = () => {
-    setEditing(null)
-    setFormOpen(true)
-  }
-
-  const openEdit = (course: Course) => {
-    setEditing(course)
-    setFormOpen(true)
-  }
-
-  const openDelete = (course: Course) => {
-    setDeleting(course)
-    setDeleteOpen(true)
-  }
-
-  const handleSubmit = (data: Omit<Course, "id"> & { id?: string }) => {
-    if (data.id) {
-      setCourses((list) =>
-        list.map((c) => (c.id === data.id ? { ...c, ...data, id: c.id } : c))
-      )
-      return
-    }
-    const id = String(
-      Math.max(0, ...courses.map((c) => Number(c.id) || 0)) + 1
-    )
-    setCourses((list) => [...list, { ...data, id }])
-  }
-
-  const handleDelete = () => {
-    if (!deleting) return
-    setCourses((list) => list.filter((c) => c.id !== deleting.id))
-    setDeleting(null)
-  }
-
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col gap-6")}>
@@ -212,40 +164,49 @@ export function CoursesView({
             </Button>
             <div className="flex flex-col gap-1">
               <h1 className="font-heading text-2xl font-semibold tracking-tight">
-                Môn học
+                {dept ? `Môn học — ${dept.name}` : "Môn học"}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {importStore.hasImport ? (
+                {dept ? (
                   <>
                     Từ file{" "}
                     <span className="font-medium text-foreground/80">
-                      {importStore.fileName}
+                      {dept.fileName}
                     </span>{" "}
                     · {effectiveCourses.length} môn ·{" "}
-                    {importStore.sections.length} nhóm lớp
+                    {dept.sections.length} nhóm lớp
                   </>
                 ) : (
-                  <>Môn học Tổ VLSI · {effectiveCourses.length} môn</>
+                  <>Chưa có dữ liệu — upload file phân công</>
                 )}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <UploadAssignmentButton
+            {departments.length > 1
+              ? departments.map((d) => (
+                  <Button
+                    key={d.id}
+                    variant={d.id === dept?.id ? "secondary" : "ghost"}
+                    size="sm"
+                    className="rounded-lg"
+                    render={<Link href={`/courses?dept=${d.id}`} />}
+                    nativeButton={false}
+                  >
+                    {d.name}
+                  </Button>
+                ))
+              : null}
+            <Button
+              variant="ghost"
+              size="sm"
               className="transition-opacity duration-150 hover:opacity-80"
-              onImported={importStore.importSections}
-            />
-            {importStore.hasImport ? (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={importStore.clear}
-                aria-label="Gỡ file phân công"
-                className="text-muted-foreground"
-              >
-                <X />
-              </Button>
-            ) : null}
+              render={<Link href="/departments" />}
+              nativeButton={false}
+            >
+              <Building2 data-icon="inline-start" />
+              Khoa
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -257,10 +218,6 @@ export function CoursesView({
               Giảng viên
             </Button>
             <ThemeToggle />
-            <Button className="rounded-xl" onClick={openCreate}>
-              <Plus data-icon="inline-start" />
-              Thêm môn học
-            </Button>
           </div>
         </header>
 
@@ -323,14 +280,13 @@ export function CoursesView({
                 <TableHead className="hidden xl:table-cell">
                   Thực hành
                 </TableHead>
-                <TableHead className="w-[100px] text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="h-40 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -418,33 +374,7 @@ export function CoursesView({
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openEdit(course)
-                          }}
-                          aria-label={`Sửa ${course.name}`}
-                        >
-                          <Pencil />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            openDelete(course)
-                          }}
-                          aria-label={`Xóa ${course.name}`}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
-                    </TableCell>
+
                   </TableRow>
                   )
                 })
@@ -453,20 +383,6 @@ export function CoursesView({
           </Table>
         </div>
       </div>
-
-      <CourseFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        course={editing}
-        onSubmit={handleSubmit}
-      />
-
-      <CourseDeleteDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        course={deleting}
-        onConfirm={handleDelete}
-      />
 
       <CourseSectionsDialog
         open={sectionsOpen}
@@ -482,19 +398,21 @@ export function CoursesView({
             : []
         }
         getAssignment={
-          importStore.hasImport
+          dept
             ? (s) => {
-                const src = importStore.sections.find(
+                const src = dept.sections.find(
                   (i) => i.code === s.code && i.group === s.group
                 )
                 return src
-                  ? importStore.getAssignment(src)
+                  ? getEffectiveAssignment(dept, src)
                   : { lead: undefined, teacher: undefined }
               }
             : undefined
         }
         onAssign={
-          importStore.hasImport ? importStore.assign : undefined
+          dept
+            ? (key, patch) => departmentStore.assign(dept.id, key, patch)
+            : undefined
         }
       />
     </div>

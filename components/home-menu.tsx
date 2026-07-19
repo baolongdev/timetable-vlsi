@@ -31,6 +31,11 @@ const FlowingMenu = dynamic(
  */
 const menuItems: FlowingMenuItem[] = [
   {
+    link: "/departments",
+    text: "Departments",
+    image: "https://picsum.photos/seed/departments/600/400",
+  },
+  {
     link: "/timetable",
     text: "Timetable",
     image: "https://picsum.photos/seed/timetable/600/400",

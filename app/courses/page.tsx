@@ -1,21 +1,20 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 
 import { CoursesView } from "@/components/courses/courses-view"
-import { loadCourses, loadSections } from "@/lib/data-loader"
+import { TablePageSkeleton } from "@/components/skeletons"
 
 export const metadata: Metadata = {
   title: "Môn học",
   description:
-    "Danh sách môn học Tổ VLSI — nhóm lớp, tiết học, tuần học và đội ngũ giảng dạy từng môn.",
+    "Danh sách môn học theo khoa — nhóm lớp, tiết học, tuần học và phân công giảng dạy.",
   alternates: { canonical: "/courses" },
 }
 
-export const revalidate = 300
-
-export default async function CoursesPage() {
-  const [courses, sections] = await Promise.all([
-    loadCourses(),
-    loadSections(),
-  ])
-  return <CoursesView initialData={courses} sections={sections} />
+export default function CoursesPage() {
+  return (
+    <Suspense fallback={<TablePageSkeleton />}>
+      <CoursesView />
+    </Suspense>
+  )
 }

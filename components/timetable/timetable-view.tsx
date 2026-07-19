@@ -2,7 +2,9 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
-import { X } from "lucide-react"
+import Link from "next/link"
+import { useSearchParams } from "next/navigation"
+import { Building2, FileSpreadsheet } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { pagePad, sectionGap } from "@/components/timetable/layout"
@@ -21,14 +23,18 @@ const TimetableDialog = dynamic(
   { ssr: false }
 )
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   filterSchedules,
   getUniqueCourses,
   getUniqueLecturers,
   getUniqueRooms,
-  schedules as staticSchedules,
 } from "@/data/timetable"
-import { useImportStore } from "@/lib/use-import-store"
+import {
+  departmentStore,
+  getEffectiveAssignment,
+  useDepartments,
+} from "@/lib/department-store"
 import { cn } from "@/lib/utils"
 import { sectionKey } from "@/types/import"
 import type { Schedule, TimetableFilters } from "@/types/timetable"
@@ -40,33 +46,30 @@ const INITIAL_FILTERS: TimetableFilters = {
   room: "all",
 }
 
-type TimetableViewProps = {
-  /** Schedules from the server (DB); falls back to static data */
-  schedules?: Schedule[]
-}
-
-export function TimetableView({
-  schedules = staticSchedules,
-}: TimetableViewProps) {
+export function TimetableView() {
   const [filters, setFilters] =
     React.useState<TimetableFilters>(INITIAL_FILTERS)
   const [selected, setSelected] = React.useState<Schedule | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
-  // Đổi giảng viên trực tiếp trên dialog — chỉ tồn tại trong phiên
-  const [lecturerOverrides, setLecturerOverrides] = React.useState<
-    Record<string, string>
-  >({})
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
-  const importStore = useImportStore()
+  const { departments, hydrated } = useDepartments()
+  const searchParams = useSearchParams()
+  const deptParam = searchParams.get("dept")
 
-  // Ưu tiên dữ liệu Excel đã upload; chưa upload thì dùng data mặc định
+  // Khoa đang xem: theo ?dept=, mặc định khoa đầu tiên
+  const dept = React.useMemo(
+    () =>
+      departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
+    [departments, deptParam]
+  )
+
   const baseSchedules = React.useMemo<Schedule[]>(() => {
-    if (!importStore.hasImport) return schedules
-    return importStore.sections
+    if (!dept) return []
+    return dept.sections
       .filter((s) => s.endPeriod <= 12)
       .map((s, i) => {
-        const a = importStore.getAssignment(s)
+        const a = getEffectiveAssignment(dept, s)
         return {
           id: `${sectionKey(s)}-${i}`,
           courseCode: s.code,
@@ -81,47 +84,24 @@ export function TimetableView({
           weeks: s.weeksLabel,
         }
       })
-  }, [importStore, schedules])
-
-  const effectiveSchedules = React.useMemo(
-    () =>
-      baseSchedules.map((s) =>
-        lecturerOverrides[s.id]
-          ? { ...s, lecturer: lecturerOverrides[s.id] }
-          : s
-      ),
-    [baseSchedules, lecturerOverrides]
-  )
-
-  const handleLecturerChange = (scheduleId: string, lecturer: string) => {
-    if (importStore.hasImport) {
-      // schedule.id có dạng `${code}-${group}-${i}` — cắt bỏ index cuối
-      const key = scheduleId.replace(/-\d+$/, "")
-      importStore.assign(key, { teacher: lecturer })
-    } else {
-      setLecturerOverrides((prev) => ({ ...prev, [scheduleId]: lecturer }))
-    }
-    setSelected((prev) =>
-      prev && prev.id === scheduleId ? { ...prev, lecturer } : prev
-    )
-  }
+  }, [dept])
 
   const filtered = React.useMemo(
-    () => filterSchedules(effectiveSchedules, filters),
-    [effectiveSchedules, filters]
+    () => filterSchedules(baseSchedules, filters),
+    [baseSchedules, filters]
   )
 
   const lecturers = React.useMemo(
-    () => getUniqueLecturers(effectiveSchedules),
-    [effectiveSchedules]
+    () => getUniqueLecturers(baseSchedules),
+    [baseSchedules]
   )
   const courses = React.useMemo(
-    () => getUniqueCourses(effectiveSchedules),
-    [effectiveSchedules]
+    () => getUniqueCourses(baseSchedules),
+    [baseSchedules]
   )
   const rooms = React.useMemo(
-    () => getUniqueRooms(effectiveSchedules),
-    [effectiveSchedules]
+    () => getUniqueRooms(baseSchedules),
+    [baseSchedules]
   )
 
   const handleSelect = (schedule: Schedule) => {
@@ -130,6 +110,20 @@ export function TimetableView({
   }
 
   const clearFilters = () => setFilters(INITIAL_FILTERS)
+
+  /** schedule.id có dạng `${code}-${group}-${i}` — cắt index cuối */
+  const scheduleKey = (scheduleId: string) =>
+    scheduleId.replace(/-\d+$/, "")
+
+  const currentAssignment = React.useMemo(() => {
+    if (!dept || !selected) return undefined
+    const key = scheduleKey(selected.id)
+    const section = dept.sections.find(
+      (s) => `${s.code}-${s.group}` === key
+    )
+    if (!section) return undefined
+    return getEffectiveAssignment(dept, section)
+  }, [dept, selected])
 
   const handleExport = () => {
     const rows = [
@@ -160,11 +154,6 @@ export function TimetableView({
     ]
 
     const quote = (cell: string) => `"${cell.replaceAll('"', '""')}"`
-
-    // NOTE: không dùng ="..." cho cột weeks — field không bắt đầu bằng dấu
-    // nháy nên CSV parser bỏ qua quote, dấu phẩy bên trong bị tách cột.
-    // Nhãn tuần giờ dùng en-dash "1–7, 9–16" nên Excel không hiểu nhầm
-    // thành ngày nữa, chỉ cần quote thường.
     const csv = rows
       .map((row) => row.map((cell) => quote(String(cell))).join(","))
       .join("\r\n")
@@ -176,7 +165,7 @@ export function TimetableView({
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "timetable.csv"
+    link.download = `timetable-${dept?.id ?? "export"}.csv`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -197,29 +186,34 @@ export function TimetableView({
       <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col", sectionGap)}>
         <TimetableHeader
           onExport={handleExport}
+          departmentName={dept?.name}
           importSlot={
-            <div className="flex items-center gap-2">
-              <UploadAssignmentButton
+            <div className="flex items-center gap-1">
+              {/* Chuyển nhanh giữa các khoa đã import */}
+              {departments.length > 1
+                ? departments.map((d) => (
+                    <Button
+                      key={d.id}
+                      variant={d.id === dept?.id ? "secondary" : "ghost"}
+                      size="sm"
+                      className="rounded-lg"
+                      render={<Link href={`/timetable?dept=${d.id}`} />}
+                      nativeButton={false}
+                    >
+                      {d.name}
+                    </Button>
+                  ))
+                : null}
+              <Button
+                variant="ghost"
+                size="sm"
                 className="transition-opacity duration-150 hover:opacity-80"
-                onImported={importStore.importSections}
-              />
-              {importStore.hasImport ? (
-                <Badge
-                  variant="secondary"
-                  className="max-w-40 gap-1 font-normal"
-                  title={importStore.fileName ?? undefined}
-                >
-                  <span className="truncate">{importStore.fileName}</span>
-                  <button
-                    type="button"
-                    onClick={importStore.clear}
-                    aria-label="Gỡ file phân công"
-                    className="opacity-60 hover:opacity-100"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </Badge>
-              ) : null}
+                render={<Link href="/departments" />}
+                nativeButton={false}
+              >
+                <Building2 data-icon="inline-start" />
+                Khoa
+              </Button>
             </div>
           }
         />
@@ -234,8 +228,27 @@ export function TimetableView({
         />
 
         <main className="min-h-0 flex-1 overflow-hidden">
-          {filtered.length === 0 ? (
-            <TimetableEmpty onClear={clearFilters} />
+          {hydrated && !dept ? (
+            // Chưa có khoa nào — hướng dẫn upload
+            <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-4 px-6 text-center">
+              <div className="flex size-11 items-center justify-center rounded-2xl border border-border/70 bg-muted/40">
+                <FileSpreadsheet className="size-4 text-muted-foreground" />
+              </div>
+              <div className="flex max-w-sm flex-col gap-1.5">
+                <p className="text-base font-semibold tracking-tight text-foreground">
+                  Chưa có dữ liệu thời khóa biểu
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Upload file Excel phân công giảng dạy (.xlsx) và chọn
+                  khoa / tổ để hiển thị lịch học.
+                </p>
+              </div>
+              <UploadAssignmentButton className="rounded-xl border border-border/80" />
+            </div>
+          ) : filtered.length === 0 ? (
+            dept ? (
+              <TimetableEmpty onClear={clearFilters} />
+            ) : null
           ) : (
             <>
               <div className="hidden h-full md:block">
@@ -260,31 +273,22 @@ export function TimetableView({
         schedule={selected}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onLecturerChange={
-          importStore.hasImport ? undefined : handleLecturerChange
-        }
-        assignment={
-          importStore.hasImport && selected
-            ? {
-                ...findImportedDefaults(selected.id),
-                ...importStore.assignments[selectedKey(selected.id)],
-              }
-            : undefined
-        }
+        assignment={currentAssignment}
         onAssignmentChange={
-          importStore.hasImport && selected
+          dept && selected
             ? (patch) => {
-                const key = selectedKey(selected.id)
-                importStore.assign(key, patch)
+                departmentStore.assign(
+                  dept.id,
+                  scheduleKey(selected.id),
+                  patch
+                )
                 if (patch.teacher !== undefined || patch.lead !== undefined) {
                   setSelected((prev) =>
                     prev
                       ? {
                           ...prev,
                           lecturer:
-                            patch.teacher ??
-                            patch.lead ??
-                            prev.lecturer,
+                            patch.teacher ?? patch.lead ?? prev.lecturer,
                         }
                       : prev
                   )
@@ -295,20 +299,4 @@ export function TimetableView({
       />
     </div>
   )
-
-  /** schedule.id có dạng `${code}-${group}-${i}` — cắt index cuối */
-  function selectedKey(scheduleId: string): string {
-    return scheduleId.replace(/-\d+$/, "")
-  }
-
-  function findImportedDefaults(scheduleId: string): {
-    lead?: string
-    teacher?: string
-  } {
-    const key = selectedKey(scheduleId)
-    const section = importStore.sections.find(
-      (s) => `${s.code}-${s.group}` === key
-    )
-    return { lead: section?.lead, teacher: section?.teacher }
-  }
 }
