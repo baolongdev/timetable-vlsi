@@ -7,7 +7,7 @@ import { useParams } from "next/navigation"
 import { Building2, FileSpreadsheet } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
-import { ConflictBanner } from "@/components/timetable/conflict-banner"
+import { ConflictDrawer } from "@/components/timetable/conflict-drawer"
 import { pagePad, sectionGap } from "@/components/timetable/layout"
 import { TimetableEmpty } from "@/components/timetable/timetable-empty"
 import {
@@ -245,7 +245,7 @@ export function TimetableView() {
           onExport={handleExport}
           departmentName={dept?.name}
           importSlot={
-            <div className="flex items-center gap-1">
+            <div data-tour="dept-switch" className="flex items-center gap-1">
               {/* Chuyển nhanh giữa các khoa đã import */}
               {departments.length > 1
                 ? departments.map((d) => (
@@ -273,6 +273,7 @@ export function TimetableView() {
               </Button>
             </div>
           }
+          conflictSlot={<ConflictDrawer index={conflictIndex} />}
         />
 
         <TimetableToolbar
@@ -285,10 +286,6 @@ export function TimetableView() {
           scrollState={scrollState}
           onScrollByViewport={handleScrollByViewport}
         />
-
-        {conflictIndex.conflicts.length > 0 ? (
-          <ConflictBanner index={conflictIndex} className="shrink-0" />
-        ) : null}
 
         <main className="min-h-0 flex-1 overflow-hidden">
           {!hydrated ? (
@@ -312,13 +309,15 @@ export function TimetableView() {
                   khoa / tổ để hiển thị lịch học.
                 </p>
               </div>
-              <UploadAssignmentButton className="rounded-xl border border-border/80" />
+              <div data-tour="upload">
+                <UploadAssignmentButton className="rounded-xl border border-border/80" />
+              </div>
             </div>
           ) : filtered.length === 0 ? (
             <TimetableEmpty onClear={clearFilters} />
           ) : (
             <>
-              <div className="hidden h-full md:block">
+              <div data-tour="grid" className="hidden h-full md:block">
                 <TimetableGrid
                   ref={gridRef}
                   schedules={filtered}

@@ -193,6 +193,7 @@ export function TimetableCard({
     <div
       role="button"
       tabIndex={0}
+      data-timetable-card=""
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -206,7 +207,7 @@ export function TimetableCard({
       onBlur={() => setHover(false)}
       style={layoutStyle}
       className={cn(
-        "group absolute z-10 cursor-pointer text-left outline-none",
+        "group absolute z-10 cursor-pointer select-none text-left outline-none",
         "transition-all duration-150 ease-out",
         isExpanded ? "z-40 overflow-visible" : "overflow-hidden hover:z-30",
         "hover:-translate-y-px",
@@ -229,7 +230,7 @@ export function TimetableCard({
       >
         {hasConflict ? (
           <span
-            className="absolute top-2 left-2 z-10 flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive"
+            className="absolute top-2 right-2 z-10 flex size-5 items-center justify-center rounded-full bg-destructive/15 text-destructive"
             aria-label="Trùng lịch"
             title={conflictHint || "Trùng lịch"}
           >
@@ -238,7 +239,9 @@ export function TimetableCard({
         ) : null}
         <div
           className={cn(
-            "absolute top-2 right-2 z-10 flex items-center gap-0.5",
+            "absolute top-2 z-20 flex items-center gap-0.5",
+            // Tránh đè icon cảnh báo bên phải
+            hasConflict ? "right-8" : "right-2",
             "opacity-0 transition-opacity duration-150 ease-out",
             "group-hover:opacity-100 group-focus-visible:opacity-100",
             (isSingle || isDouble) && "hidden group-hover:flex"
@@ -325,7 +328,13 @@ export function TimetableCard({
               className={cn(
                 "w-fit max-w-full font-semibold tracking-tight text-foreground",
                 "text-sm leading-snug xl:text-base",
-                isSingle ? "truncate pr-0" : "line-clamp-2 pr-2"
+                isSingle
+                  ? hasConflict
+                    ? "truncate pr-7"
+                    : "truncate pr-0"
+                  : hasConflict
+                    ? "line-clamp-2 pr-7"
+                    : "line-clamp-2 pr-2"
               )}
             >
               {schedule.courseName}

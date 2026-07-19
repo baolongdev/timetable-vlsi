@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { LecturerChip } from "@/components/lecturer-chip"
+import { TourHelpButton } from "@/components/onboarding-tour"
 
 // Dialog nặng (bảng nhóm lớp + combobox phân công) — tải khi mở lần đầu
 const CourseSectionsDialog = dynamic(
@@ -197,7 +198,10 @@ export function CoursesView() {
               </p>
             </div>
           </div>
-          <div className="scrollbar-minimal -mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 sm:gap-2">
+          <div
+            data-tour="courses-dept-switch"
+            className="scrollbar-minimal -mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 sm:gap-2"
+          >
             {departments.length > 1
               ? departments.map((d) => (
                   <Button
@@ -225,6 +229,7 @@ export function CoursesView() {
             <Button
               variant="ghost"
               size="sm"
+              data-tour="courses-nav-lecturers"
               className="shrink-0 transition-opacity duration-150 hover:opacity-80"
               render={<Link href="/lecturers" />}
               nativeButton={false}
@@ -232,13 +237,19 @@ export function CoursesView() {
               <Users data-icon="inline-start" />
               Giảng viên
             </Button>
-            <ThemeToggle className="shrink-0" />
+            <TourHelpButton className="shrink-0" />
+            <span data-tour="theme-toggle" className="inline-flex shrink-0">
+              <ThemeToggle className="shrink-0" />
+            </span>
           </div>
         </header>
 
         {/* Toolbar */}
         <div className="flex min-w-0 shrink-0 flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
-          <div className="relative w-full min-w-0 max-w-sm">
+          <div
+            data-tour="courses-search"
+            className="relative w-full min-w-0 max-w-sm"
+          >
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -247,58 +258,63 @@ export function CoursesView() {
               className="h-10 w-full rounded-xl pl-9 shadow-none"
             />
           </div>
-          <Select
-            value={lecturerFilter}
-            onValueChange={(value) => setLecturerFilter(value ?? "all")}
-            items={[
-              { label: "Tất cả giảng viên", value: "all" },
-              ...initialLecturers.map((l) => ({
-                label: formatLecturerWithStaffId(l.name),
-                value: l.name,
-              })),
-            ]}
-          >
-            <SelectTrigger className="h-10 w-full shrink-0 rounded-xl sm:w-[240px]">
-              <SelectValue placeholder="Giảng viên" />
-            </SelectTrigger>
-            <SelectContent alignItemWithTrigger={false} className="max-w-sm">
-              <SelectGroup>
-                <SelectItem value="all">Tất cả giảng viên</SelectItem>
-              </SelectGroup>
-              {groupLecturersByRole().map((group, index) => (
-                <SelectGroup key={group.role}>
-                  {index > 0 ? <SelectSeparator /> : null}
-                  <SelectLabel>{group.role}</SelectLabel>
-                  {group.names.map((name) => {
-                    const lecturer = initialLecturers.find(
-                      (l) => l.name === name
-                    )
-                    return (
-                      <SelectItem key={name} value={name}>
-                        {lecturer?.staffId ? (
-                          <span className="flex w-full items-center justify-between gap-3">
-                            <span>{name}</span>
-                            <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                              MSCB {lecturer.staffId}
-                            </span>
-                          </span>
-                        ) : (
-                          name
-                        )}
-                      </SelectItem>
-                    )
-                  })}
+          <div data-tour="courses-filter-lecturer" className="w-full sm:w-auto">
+            <Select
+              value={lecturerFilter}
+              onValueChange={(value) => setLecturerFilter(value ?? "all")}
+              items={[
+                { label: "Tất cả giảng viên", value: "all" },
+                ...initialLecturers.map((l) => ({
+                  label: formatLecturerWithStaffId(l.name),
+                  value: l.name,
+                })),
+              ]}
+            >
+              <SelectTrigger className="h-10 w-full shrink-0 rounded-xl sm:w-[240px]">
+                <SelectValue placeholder="Giảng viên" />
+              </SelectTrigger>
+              <SelectContent alignItemWithTrigger={false} className="max-w-sm">
+                <SelectGroup>
+                  <SelectItem value="all">Tất cả giảng viên</SelectItem>
                 </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+                {groupLecturersByRole().map((group, index) => (
+                  <SelectGroup key={group.role}>
+                    {index > 0 ? <SelectSeparator /> : null}
+                    <SelectLabel>{group.role}</SelectLabel>
+                    {group.names.map((name) => {
+                      const lecturer = initialLecturers.find(
+                        (l) => l.name === name
+                      )
+                      return (
+                        <SelectItem key={name} value={name}>
+                          {lecturer?.staffId ? (
+                            <span className="flex w-full items-center justify-between gap-3">
+                              <span>{name}</span>
+                              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                                MSCB {lecturer.staffId}
+                              </span>
+                            </span>
+                          ) : (
+                            name
+                          )}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/*
           Table scroll: KHÔNG set overflow-visible lên table-container
           (sẽ phá overflow-x-auto → không cuộn ngang / lệch padding).
         */}
-        <div className="scrollbar-minimal min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-border/70">
+        <div
+          data-tour="courses-table"
+          className="scrollbar-minimal min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-border/70"
+        >
           <Table
             containerClassName="overflow-visible"
             className={cn(

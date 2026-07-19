@@ -3,10 +3,13 @@
 import * as React from "react"
 import { Keyboard, MousePointerClick, Search, SlidersHorizontal } from "lucide-react"
 
+import { startOnboardingTour } from "@/components/onboarding-tour"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -87,7 +90,7 @@ export function HelpDialog() {
               Trợ giúp
             </DialogTitle>
             <DialogDescription>
-              Các chức năng và phím tắt của ứng dụng
+              Phím tắt chung và hướng dẫn theo trang hiện tại
             </DialogDescription>
           </DialogHeader>
 
@@ -137,6 +140,21 @@ export function HelpDialog() {
             </p>
           </div>
         </div>
+
+        <DialogFooter className="border-t border-border/60 bg-muted/30 px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-xl"
+            onClick={() => {
+              setOpen(false)
+              // Đợi dialog đóng rồi mới mở tour
+              window.setTimeout(() => startOnboardingTour({ force: true }), 200)
+            }}
+          >
+            Hướng dẫn trang này
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

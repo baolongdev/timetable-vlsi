@@ -121,7 +121,60 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    /* position relative: drawer overlay iOS Safari (shadcn/Base UI) */
+    @apply relative select-none bg-background text-foreground;
+  }
+
+  /* Vẫn cho bôi đen / gõ bình thường trong form */
+  input,
+  textarea,
+  select,
+  [contenteditable="true"] {
+    @apply select-text;
+  }
+
+  /* driver.js — popover gọn, khớp UI app */
+  .driver-popover {
+    max-width: 22rem;
+    border-radius: 0.75rem;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 10px 40px oklch(0 0 0 / 18%);
+  }
+  .driver-popover-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .driver-popover-description {
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--muted-foreground);
+  }
+  .driver-popover-description a {
+    color: var(--foreground);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .driver-popover-description a:hover {
+    opacity: 0.85;
+  }
+  .driver-popover-next-btn,
+  .driver-popover-prev-btn,
+  .driver-popover-close-btn,
+  .driver-popover-done-btn {
+    border-radius: 0.5rem !important;
+    text-shadow: none !important;
+  }
+  .driver-popover-next-btn,
+  .driver-popover-done-btn {
+    background: var(--primary) !important;
+    color: var(--primary-foreground) !important;
+    border: none !important;
+  }
+  .driver-popover-prev-btn {
+    background: var(--muted) !important;
+    color: var(--foreground) !important;
+    border: none !important;
   }
   html {
     @apply font-sans;

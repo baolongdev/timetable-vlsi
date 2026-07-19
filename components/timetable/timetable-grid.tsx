@@ -66,7 +66,7 @@ export const TimetableGrid = React.forwardRef<
   const [highlightRange, setHighlightRange] =
     React.useState<PeriodRange | null>(null)
 
-  // Cuộn ngang — nút < > nằm trên toolbar, điều khiển qua ref
+  // Cuộn ngang — nút < > trên toolbar + kéo chuột khoảng trống
   const scrollRef = React.useRef<HTMLDivElement>(null)
   /** Mục tiêu tuyệt đối khi bấm nhanh — tránh cộng dồn scrollBy smooth bị lệch */
   const targetScrollLeftRef = React.useRef<number | null>(null)
@@ -75,11 +75,36 @@ export const TimetableGrid = React.forwardRef<
     canScrollRight: false,
   })
 
+  /**
+   * Drag-to-pan + momentum.
+   * Scroll gán trực tiếp trên pointermove (không rAF) → bám tay ngay từ pixel đầu.
+   */
+  const dragRef = React.useRef<{
+    active: boolean
+    moved: boolean
+    pointerId: number
+    startX: number
+    startY: number
+    scrollLeft: number
+    scrollTop: number
+    lastX: number
+    lastY: number
+    lastT: number
+    vx: number
+    vy: number
+  } | null>(null)
+  const momentumRafRef = React.useRef(0)
+  const draggingRef = React.useRef(false)
+
+  const FRICTION = 0.91
+  const MIN_VELOCITY = 0.05 // px/ms
+  const MAX_VELOCITY = 3.2
+
   const updateScrollState = React.useCallback(() => {
     const el = scrollRef.current
     if (!el) return
+    if (draggingRef.current) return
 
-    // Animation xong (hoặc user kéo tay tới gần target) → thả target
     const target = targetScrollLeftRef.current
     if (target != null && Math.abs(el.scrollLeft - target) < 1.5) {
       targetScrollLeftRef.current = null
@@ -102,33 +127,201 @@ export const TimetableGrid = React.forwardRef<
   }, [onScrollStateChange])
 
   React.useEffect(() => {
-    updateScrollState()
     const el = scrollRef.current
     if (!el) return
 
-    const clearTarget = () => {
-      targetScrollLeftRef.current = null
+    const stopMomentum = () => {
+      if (momentumRafRef.current) {
+        cancelAnimationFrame(momentumRafRef.current)
+        momentumRafRef.current = 0
+      }
     }
 
+    const startMomentum = (vx0: number, vy0: number) => {
+      stopMomentum()
+      let vx = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, vx0))
+      let vy = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, vy0))
+      if (Math.abs(vx) < MIN_VELOCITY && Math.abs(vy) < MIN_VELOCITY) {
+        draggingRef.current = false
+        updateScrollState()
+        return
+      }
+      let lastT = performance.now()
+      draggingRef.current = true
+
+      const tick = (now: number) => {
+        const dt = Math.min(24, now - lastT)
+        lastT = now
+        el.scrollLeft -= vx * dt
+        el.scrollTop -= vy * dt
+        vx *= FRICTION
+        vy *= FRICTION
+
+        if (el.scrollLeft <= 0 || el.scrollLeft + el.clientWidth >= el.scrollWidth - 0.5) {
+          vx = 0
+        }
+        if (el.scrollTop <= 0 || el.scrollTop + el.clientHeight >= el.scrollHeight - 0.5) {
+          vy = 0
+        }
+
+        if (Math.abs(vx) > MIN_VELOCITY || Math.abs(vy) > MIN_VELOCITY) {
+          momentumRafRef.current = requestAnimationFrame(tick)
+        } else {
+          momentumRafRef.current = 0
+          draggingRef.current = false
+          updateScrollState()
+        }
+      }
+      momentumRafRef.current = requestAnimationFrame(tick)
+    }
+
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.button !== 0) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest("[data-timetable-card]")) return
+
+      stopMomentum()
+      targetScrollLeftRef.current = null
+      draggingRef.current = true
+      const now = performance.now()
+      dragRef.current = {
+        active: true,
+        moved: false,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        lastX: e.clientX,
+        lastY: e.clientY,
+        lastT: now,
+        vx: 0,
+        vy: 0,
+        scrollLeft: el.scrollLeft,
+        scrollTop: el.scrollTop,
+      }
+      // setPointerCapture sau — một số trình duyệt hitch khi capture ngay
+      el.classList.add("cursor-grabbing", "select-none")
+      el.classList.remove("cursor-grab")
+    }
+
+    const onPointerMove = (e: PointerEvent) => {
+      const drag = dragRef.current
+      if (!drag?.active || drag.pointerId !== e.pointerId) return
+
+      const now = performance.now()
+      const dt = Math.max(1, now - drag.lastT)
+      const instVx = (e.clientX - drag.lastX) / dt
+      const instVy = (e.clientY - drag.lastY) / dt
+      // EMA nhẹ hơn (0.5) — phản ứng nhanh hơn lúc đầu
+      drag.vx = drag.vx * 0.5 + instVx * 0.5
+      drag.vy = drag.vy * 0.5 + instVy * 0.5
+      drag.lastX = e.clientX
+      drag.lastY = e.clientY
+      drag.lastT = now
+
+      const dx = e.clientX - drag.startX
+      const dy = e.clientY - drag.startY
+      // Ngưỡng 1px — bám tay ngay, gần như không dead-zone
+      if (!drag.moved) {
+        if (dx * dx + dy * dy < 1) return
+        drag.moved = true
+        try {
+          el.setPointerCapture(e.pointerId)
+        } catch {
+          // ignore
+        }
+      }
+
+      e.preventDefault()
+      // Gán scroll trực tiếp — không rAF (tránh trễ 1 frame khúc đầu)
+      el.scrollLeft = drag.scrollLeft - dx
+      el.scrollTop = drag.scrollTop - dy
+    }
+
+    const endDrag = (e: PointerEvent) => {
+      const drag = dragRef.current
+      if (!drag?.active || drag.pointerId !== e.pointerId) return
+
+      const moved = drag.moved
+      const vx = drag.vx
+      const vy = drag.vy
+      drag.active = false
+      dragRef.current = null
+
+      el.classList.remove("cursor-grabbing", "select-none")
+      el.classList.add("cursor-grab")
+      try {
+        if (el.hasPointerCapture(e.pointerId)) {
+          el.releasePointerCapture(e.pointerId)
+        }
+      } catch {
+        // ignore
+      }
+
+      if (moved) {
+        const blockClick = (ev: Event) => {
+          ev.preventDefault()
+          ev.stopPropagation()
+        }
+        el.addEventListener("click", blockClick, { capture: true, once: true })
+        window.setTimeout(() => {
+          el.removeEventListener("click", blockClick, { capture: true })
+        }, 0)
+
+        if (Math.abs(vx) > MIN_VELOCITY || Math.abs(vy) > MIN_VELOCITY) {
+          startMomentum(vx, vy)
+        } else {
+          draggingRef.current = false
+          updateScrollState()
+        }
+      } else {
+        draggingRef.current = false
+        updateScrollState()
+      }
+    }
+
+    const clearTarget = () => {
+      targetScrollLeftRef.current = null
+      stopMomentum()
+      if (draggingRef.current && !dragRef.current) {
+        draggingRef.current = false
+        updateScrollState()
+      }
+    }
+
+    el.addEventListener("pointerdown", onPointerDown)
+    el.addEventListener("pointermove", onPointerMove, { passive: false })
+    el.addEventListener("pointerup", endDrag)
+    el.addEventListener("pointercancel", endDrag)
     el.addEventListener("scroll", updateScrollState, { passive: true })
-    // Cuộn tay / thanh scroll → bỏ target pending (tránh lệch bước sau)
     el.addEventListener("wheel", clearTarget, { passive: true })
-    el.addEventListener("pointerdown", clearTarget, { passive: true })
     el.addEventListener("scrollend", updateScrollState)
     const observer = new ResizeObserver(updateScrollState)
     observer.observe(el)
+
+    updateScrollState()
+
     return () => {
+      stopMomentum()
+      el.removeEventListener("pointerdown", onPointerDown)
+      el.removeEventListener("pointermove", onPointerMove)
+      el.removeEventListener("pointerup", endDrag)
+      el.removeEventListener("pointercancel", endDrag)
       el.removeEventListener("scroll", updateScrollState)
       el.removeEventListener("wheel", clearTarget)
-      el.removeEventListener("pointerdown", clearTarget)
       el.removeEventListener("scrollend", updateScrollState)
       observer.disconnect()
     }
-  }, [updateScrollState, schedules])
+  }, [updateScrollState])
 
   const scrollByViewport = React.useCallback((direction: 1 | -1) => {
     const el = scrollRef.current
     if (!el) return
+    // Dừng momentum nếu đang trượt
+    if (momentumRafRef.current) {
+      cancelAnimationFrame(momentumRafRef.current)
+      momentumRafRef.current = 0
+      draggingRef.current = false
+    }
 
     const maxScroll = Math.max(0, el.scrollWidth - el.clientWidth)
     // Bấm nhanh: cộng từ target đang chờ, không từ scrollLeft giữa chừng
@@ -185,7 +378,8 @@ export const TimetableGrid = React.forwardRef<
     <div className="relative h-full min-h-0 w-full">
       <div
         ref={scrollRef}
-        className="scrollbar-minimal h-full min-h-0 w-full overflow-auto bg-background"
+        // cursor-grab mặc định; lúc kéo đổi bằng classList (không re-render)
+        className="scrollbar-minimal h-full min-h-0 w-full cursor-grab overflow-auto bg-background touch-none"
       >
         <div className={periodColVar + " flex w-fit min-w-full flex-col"}>
           <DayHeader days={days} gridTemplateColumns={gridTemplateColumns} />

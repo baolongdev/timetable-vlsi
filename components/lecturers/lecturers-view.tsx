@@ -12,10 +12,11 @@ import {
   UserRound,
 } from "lucide-react"
 
-import { pagePad } from "@/components/timetable/layout"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { LecturerDeleteDialog } from "@/components/lecturers/lecturer-delete-dialog"
 import { LecturerFormDialog } from "@/components/lecturers/lecturer-form-dialog"
+import { TourHelpButton } from "@/components/onboarding-tour"
+import { pagePad } from "@/components/timetable/layout"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -171,6 +172,7 @@ export function LecturersView({
             <Button
               variant="ghost"
               size="sm"
+              data-tour="lecturers-nav-courses"
               className="transition-opacity duration-150 hover:opacity-80"
               render={<Link href="/courses" />}
               nativeButton={false}
@@ -178,8 +180,15 @@ export function LecturersView({
               <BookOpen data-icon="inline-start" />
               Môn học
             </Button>
-            <ThemeToggle />
-            <Button className="rounded-xl" onClick={openCreate}>
+            <TourHelpButton />
+            <span data-tour="theme-toggle" className="inline-flex">
+              <ThemeToggle />
+            </span>
+            <Button
+              data-tour="lecturers-add"
+              className="rounded-xl"
+              onClick={openCreate}
+            >
               <Plus data-icon="inline-start" />
               Thêm giảng viên
             </Button>
@@ -188,7 +197,7 @@ export function LecturersView({
 
         {/* Toolbar */}
         <div className="flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-center">
-          <div className="relative w-full max-w-sm">
+          <div data-tour="lecturers-search" className="relative w-full max-w-sm">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
@@ -197,32 +206,35 @@ export function LecturersView({
               className="h-10 rounded-xl pl-9 shadow-none"
             />
           </div>
-          <Select
-            value={roleFilter}
-            onValueChange={(value) => setRoleFilter(value ?? "all")}
-            items={{
-              all: "Tất cả vai trò",
-              ...Object.fromEntries(LECTURER_ROLES.map((r) => [r, r])),
-            }}
-          >
-            <SelectTrigger className="h-10 w-full rounded-xl sm:w-[180px]">
-              <SelectValue placeholder="Vai trò" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="all">Tất cả vai trò</SelectItem>
-                {LECTURER_ROLES.map((role) => (
-                  <SelectItem key={role} value={role}>
-                    {role}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div data-tour="lecturers-filter-role" className="w-full sm:w-auto">
+            <Select
+              value={roleFilter}
+              onValueChange={(value) => setRoleFilter(value ?? "all")}
+              items={{
+                all: "Tất cả vai trò",
+                ...Object.fromEntries(LECTURER_ROLES.map((r) => [r, r])),
+              }}
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl sm:w-[180px]">
+                <SelectValue placeholder="Vai trò" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="all">Tất cả vai trò</SelectItem>
+                  {LECTURER_ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Table */}
         <div
+          data-tour="lecturers-table"
           className={cn(
             "scrollbar-minimal min-h-0 flex-1 overflow-auto rounded-xl border border-border/70",
             // Let the sticky header stick to THIS scroll container, not the

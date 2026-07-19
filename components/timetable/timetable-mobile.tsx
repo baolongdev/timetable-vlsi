@@ -59,7 +59,7 @@ export function TimetableMobile({
                       onClick={() => onSelect(schedule)}
                       title={conflictHints?.get(schedule.id)}
                       className={cn(
-                        "rounded-2xl border border-border/80 bg-background p-4 text-left shadow-none",
+                        "rounded-2xl border border-border/80 bg-background p-4 text-left shadow-none select-none",
                         "transition-all duration-150 ease-out",
                         "hover:-translate-y-px hover:border-foreground/20 hover:shadow-sm",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30",

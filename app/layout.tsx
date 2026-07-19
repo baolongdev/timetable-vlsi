@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 
+import { ContentProtection } from "@/components/content-protection"
 import { HelpDialog } from "@/components/help-dialog"
+import { OnboardingTour } from "@/components/onboarding-tour"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
@@ -86,11 +88,13 @@ export default function RootLayout({
         geist.variable
       )}
     >
-      <body className="min-h-dvh bg-background text-foreground">
+      <body className="relative min-h-dvh bg-background text-foreground">
         <ThemeProvider>
           <TooltipProvider>
+            <ContentProtection />
             {children}
             <HelpDialog />
+            <OnboardingTour />
           </TooltipProvider>
         </ThemeProvider>
       </body>

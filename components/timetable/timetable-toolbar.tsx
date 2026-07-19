@@ -132,7 +132,10 @@ export function TimetableToolbar({
           controlGap
         )}
       >
-        <div className="relative w-full max-w-sm transition-all duration-150 focus-within:max-w-md">
+        <div
+          data-tour="search"
+          className="relative w-full max-w-sm transition-all duration-150 focus-within:max-w-md"
+        >
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={searchInputRef}
@@ -160,103 +163,112 @@ export function TimetableToolbar({
             controlGap
           )}
         >
-          <div className={cn("hidden items-center md:flex", controlGap)}>
-            <Select
-              value={filters.course}
-              onValueChange={(value) => update({ course: value ?? "all" })}
-              items={courseItems}
-            >
-              <SelectTrigger className="h-10 w-[min(100%,17.5rem)] min-w-[14rem] max-w-[20rem] rounded-xl border-border/80 shadow-none sm:w-[18rem]">
-                <SelectValue placeholder="Môn học" />
-              </SelectTrigger>
-              <SelectContent
-                alignItemWithTrigger={false}
-                // Rộng hơn trigger — hiện đủ "CO1023 — Hệ thống số (TN)"
-                className="w-[min(calc(100vw-2rem),28rem)] min-w-[18rem] max-w-[28rem]"
+          <div
+            data-tour="filters"
+            className={cn("hidden items-center md:flex", controlGap)}
+          >
+            <div data-tour="filter-course">
+              <Select
+                value={filters.course}
+                onValueChange={(value) => update({ course: value ?? "all" })}
+                items={courseItems}
               >
-                <SelectGroup>
-                  {courseItems.map((item) => (
-                    <SelectItem
-                      key={item.value}
-                      value={item.value}
-                      className="h-auto min-h-8 items-start whitespace-normal py-1.5 *:[span]:whitespace-normal *:[span]:leading-snug"
-                    >
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.lecturer}
-              onValueChange={(value) => update({ lecturer: value ?? "all" })}
-              items={lecturerItems}
-            >
-              <SelectTrigger className="h-10 w-[220px] rounded-xl border-border/80 shadow-none">
-                <SelectValue placeholder="Giảng viên" />
-              </SelectTrigger>
-              <SelectContent
-                alignItemWithTrigger={false}
-                className="min-w-(--anchor-width) max-w-sm"
-              >
-                <SelectGroup>
-                  <SelectItem value="all">Tất cả giảng viên</SelectItem>
-                </SelectGroup>
-                {lecturerRoleGroups.map((group, index) => (
-                  <SelectGroup key={group.role}>
-                    {index > 0 ? <SelectSeparator /> : null}
-                    <SelectLabel>{group.role}</SelectLabel>
-                    {group.names.map((name) => {
-                      const staffId = getStaffIdByName(name)
-                      return (
-                        <SelectItem key={name} value={name}>
-                          {staffId ? (
-                            <span className="flex w-full items-center justify-between gap-3">
-                              <span>{name}</span>
-                              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                                MSCB {staffId}
-                              </span>
-                            </span>
-                          ) : (
-                            name
-                          )}
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.room}
-              onValueChange={(value) => update({ room: value ?? "all" })}
-              items={roomItems}
-            >
-              <SelectTrigger className="h-10 w-[140px] rounded-xl border-border/80 shadow-none">
-                <SelectValue placeholder="Phòng" />
-              </SelectTrigger>
-              <SelectContent
-                alignItemWithTrigger={false}
-                className="min-w-(--anchor-width) max-w-xs"
-              >
-                <SelectGroup>
-                  <SelectItem value="all">Tất cả phòng</SelectItem>
-                </SelectGroup>
-                {roomBuildingGroups.map((group, index) => (
-                  <SelectGroup key={group.building}>
-                    {index > 0 ? <SelectSeparator /> : null}
-                    <SelectLabel>Tòa {group.building}</SelectLabel>
-                    {group.rooms.map((room) => (
-                      <SelectItem key={room} value={room}>
-                        {room}
+                <SelectTrigger className="h-10 w-[min(100%,17.5rem)] min-w-[14rem] max-w-[20rem] rounded-xl border-border/80 shadow-none sm:w-[18rem]">
+                  <SelectValue placeholder="Môn học" />
+                </SelectTrigger>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  // Rộng hơn trigger — hiện đủ "CO1023 — Hệ thống số (TN)"
+                  className="w-[min(calc(100vw-2rem),28rem)] min-w-[18rem] max-w-[28rem]"
+                >
+                  <SelectGroup>
+                    {courseItems.map((item) => (
+                      <SelectItem
+                        key={item.value}
+                        value={item.value}
+                        className="h-auto min-h-8 items-start whitespace-normal py-1.5 *:[span]:whitespace-normal *:[span]:leading-snug"
+                      >
+                        {item.label}
                       </SelectItem>
                     ))}
                   </SelectGroup>
-                ))}
-              </SelectContent>
-            </Select>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div data-tour="filter-lecturer">
+              <Select
+                value={filters.lecturer}
+                onValueChange={(value) => update({ lecturer: value ?? "all" })}
+                items={lecturerItems}
+              >
+                <SelectTrigger className="h-10 w-[220px] rounded-xl border-border/80 shadow-none">
+                  <SelectValue placeholder="Giảng viên" />
+                </SelectTrigger>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  className="min-w-(--anchor-width) max-w-sm"
+                >
+                  <SelectGroup>
+                    <SelectItem value="all">Tất cả giảng viên</SelectItem>
+                  </SelectGroup>
+                  {lecturerRoleGroups.map((group, index) => (
+                    <SelectGroup key={group.role}>
+                      {index > 0 ? <SelectSeparator /> : null}
+                      <SelectLabel>{group.role}</SelectLabel>
+                      {group.names.map((name) => {
+                        const staffId = getStaffIdByName(name)
+                        return (
+                          <SelectItem key={name} value={name}>
+                            {staffId ? (
+                              <span className="flex w-full items-center justify-between gap-3">
+                                <span>{name}</span>
+                                <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                                  MSCB {staffId}
+                                </span>
+                              </span>
+                            ) : (
+                              name
+                            )}
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div data-tour="filter-room">
+              <Select
+                value={filters.room}
+                onValueChange={(value) => update({ room: value ?? "all" })}
+                items={roomItems}
+              >
+                <SelectTrigger className="h-10 w-[140px] rounded-xl border-border/80 shadow-none">
+                  <SelectValue placeholder="Phòng" />
+                </SelectTrigger>
+                <SelectContent
+                  alignItemWithTrigger={false}
+                  className="min-w-(--anchor-width) max-w-xs"
+                >
+                  <SelectGroup>
+                    <SelectItem value="all">Tất cả phòng</SelectItem>
+                  </SelectGroup>
+                  {roomBuildingGroups.map((group, index) => (
+                    <SelectGroup key={group.building}>
+                      {index > 0 ? <SelectSeparator /> : null}
+                      <SelectLabel>Tòa {group.building}</SelectLabel>
+                      {group.rooms.map((room) => (
+                        <SelectItem key={room} value={room}>
+                          {room}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <DropdownMenu>
@@ -265,6 +277,7 @@ export function TimetableToolbar({
                 <Button
                   variant="outline"
                   size="sm"
+                  data-tour="filters-mobile"
                   className="h-10 rounded-xl border-border/80 shadow-none md:hidden"
                 />
               }
@@ -366,6 +379,7 @@ export function TimetableToolbar({
           {/* Nút cuộn trái/phải — cùng hàng toolbar, căn phải (desktop grid) */}
           {showScrollControls ? (
             <div
+              data-tour="scroll"
               className={cn(
                 "ml-auto hidden items-center md:flex",
                 controlGap

@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
+import { TourHelpButton } from "@/components/onboarding-tour"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
@@ -159,10 +160,13 @@ export function DepartmentsView() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <UploadAssignmentButton className="rounded-xl border border-border/80" />
+            <span data-tour="dept-upload" className="inline-flex">
+              <UploadAssignmentButton className="rounded-xl border border-border/80" />
+            </span>
             <Button
               variant="ghost"
               size="sm"
+              data-tour="dept-nav-lecturers"
               className="transition-opacity duration-150 hover:opacity-80"
               render={<Link href="/lecturers" />}
               nativeButton={false}
@@ -170,7 +174,10 @@ export function DepartmentsView() {
               <Users data-icon="inline-start" />
               Giảng viên
             </Button>
-            <ThemeToggle />
+            <TourHelpButton />
+            <span data-tour="theme-toggle" className="inline-flex">
+              <ThemeToggle />
+            </span>
           </div>
         </header>
 
@@ -182,7 +189,10 @@ export function DepartmentsView() {
             </p>
           </div>
         ) : departments.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-20 text-center">
+          <div
+            data-tour="dept-empty"
+            className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-20 text-center"
+          >
             <div className="flex size-11 items-center justify-center rounded-2xl border border-border/70 bg-muted/40">
               <FileSpreadsheet className="size-4 text-muted-foreground" />
             </div>
@@ -198,7 +208,10 @@ export function DepartmentsView() {
             <UploadAssignmentButton className="rounded-xl border border-border/80" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            data-tour="dept-list"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          >
             {departments.map((dept) => (
               <DepartmentCard key={dept.id} dept={dept} />
             ))}

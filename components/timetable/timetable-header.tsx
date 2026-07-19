@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { BookOpen, Download, Users } from "lucide-react"
 
+import { TourHelpButton } from "@/components/onboarding-tour"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +19,8 @@ type TimetableHeaderProps = {
   departmentName?: string
   /** Slot cho nút chuyển khoa / upload */
   importSlot?: React.ReactNode
+  /** Slot cảnh báo trùng lịch (icon + drawer) */
+  conflictSlot?: React.ReactNode
   className?: string
 }
 
@@ -25,6 +28,7 @@ export function TimetableHeader({
   onExport,
   departmentName,
   importSlot,
+  conflictSlot,
   className,
 }: TimetableHeaderProps) {
   return (
@@ -51,14 +55,19 @@ export function TimetableHeader({
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-1">
+      <div
+        data-tour="header-actions"
+        className="flex flex-wrap items-center gap-1"
+      >
         {importSlot}
+        {conflictSlot}
         <Tooltip>
           <TooltipTrigger
             render={
               <Button
                 variant="ghost"
                 size="sm"
+                data-tour="export"
                 onClick={onExport}
                 className="transition-opacity duration-150 hover:opacity-80"
               />
@@ -74,6 +83,7 @@ export function TimetableHeader({
         <Button
           variant="ghost"
           size="sm"
+          data-tour="nav-courses"
           className="transition-opacity duration-150 hover:opacity-80"
           render={<Link href="/courses" />}
           nativeButton={false}
@@ -84,6 +94,7 @@ export function TimetableHeader({
         <Button
           variant="ghost"
           size="sm"
+          data-tour="nav-lecturers"
           className="transition-opacity duration-150 hover:opacity-80"
           render={<Link href="/lecturers" />}
           nativeButton={false}
@@ -91,7 +102,10 @@ export function TimetableHeader({
           <Users data-icon="inline-start" />
           Giảng viên
         </Button>
-        <ThemeToggle className="transition-opacity duration-150 hover:opacity-80" />
+        <TourHelpButton />
+        <span data-tour="theme-toggle" className="inline-flex">
+          <ThemeToggle className="transition-opacity duration-150 hover:opacity-80" />
+        </span>
       </div>
     </header>
   )

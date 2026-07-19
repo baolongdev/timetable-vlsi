@@ -2,8 +2,9 @@
 
 import dynamic from "next/dynamic"
 
-import { Skeleton } from "@/components/ui/skeleton"
 import type { FlowingMenuItem } from "@/components/flowing-menu"
+import { TourHelpButton } from "@/components/onboarding-tour"
+import { Skeleton } from "@/components/ui/skeleton"
 
 // GSAP menu nặng — tải lười với skeleton thay thế
 const FlowingMenu = dynamic(
@@ -55,15 +56,22 @@ const menuItems: FlowingMenuItem[] = [
 export function HomeMenu() {
   return (
     <div className="relative h-dvh w-full">
-      <FlowingMenu
-        items={menuItems}
-        speed={12}
-        textColor="#0a0a0a"
-        bgColor="#ffffff"
-        marqueeBgColor="#0a0a0a"
-        marqueeTextColor="#ffffff"
-        borderColor="#e5e5e5"
-      />
+      <div data-tour="home-menu" className="h-full w-full">
+        <FlowingMenu
+          items={menuItems}
+          speed={12}
+          textColor="#0a0a0a"
+          bgColor="#ffffff"
+          marqueeBgColor="#0a0a0a"
+          marqueeTextColor="#ffffff"
+          borderColor="#e5e5e5"
+        />
+      </div>
+      <div className="pointer-events-none absolute top-4 right-4 z-20 sm:top-6 sm:right-6">
+        <div className="pointer-events-auto rounded-xl border border-border/80 bg-background/90 shadow-sm backdrop-blur-sm">
+          <TourHelpButton />
+        </div>
+      </div>
     </div>
   )
 }
