@@ -137,26 +137,42 @@
   .driver-popover {
     max-width: 22rem;
     border-radius: 0.75rem;
-    background: var(--popover);
-    color: var(--popover-foreground);
+    background: var(--popover) !important;
+    color: var(--popover-foreground) !important;
     box-shadow: 0 10px 40px oklch(0 0 0 / 18%);
   }
   .driver-popover-title {
     font-size: 0.95rem;
     font-weight: 600;
+    color: var(--popover-foreground) !important;
   }
   .driver-popover-description {
     font-size: 0.8125rem;
     line-height: 1.45;
-    color: var(--muted-foreground);
+    color: var(--muted-foreground) !important;
   }
-  .driver-popover-description a {
-    color: var(--foreground);
-    text-decoration: underline;
+  /* driver.js default hay set link trắng → mất trên nền sáng */
+  .driver-popover .driver-popover-description a,
+  .driver-popover-description a,
+  .driver-popover a {
+    color: oklch(0.42 0.14 255) !important;
+    text-decoration: underline !important;
     text-underline-offset: 2px;
+    font-weight: 500;
   }
+  .dark .driver-popover .driver-popover-description a,
+  .dark .driver-popover-description a,
+  .dark .driver-popover a {
+    color: oklch(0.78 0.12 230) !important;
+  }
+  .driver-popover .driver-popover-description a:hover,
   .driver-popover-description a:hover {
-    opacity: 0.85;
+    opacity: 0.9;
+    color: oklch(0.35 0.16 255) !important;
+  }
+  .dark .driver-popover .driver-popover-description a:hover,
+  .dark .driver-popover-description a:hover {
+    color: oklch(0.88 0.1 230) !important;
   }
   .driver-popover-next-btn,
   .driver-popover-prev-btn,

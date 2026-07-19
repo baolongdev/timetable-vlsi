@@ -55,7 +55,7 @@ function filterVisibleSteps(steps: DriveStep[]): DriveStep[] {
 }
 
 const CREDIT = desc(
-  "Do <strong>Lê Bảo Long</strong> phát triển · <a href=\"https://github.com/baolongdev\" target=\"_blank\" rel=\"noopener noreferrer\">github.com/baolongdev</a>"
+  'Do <strong>Lê Bảo Long</strong> phát triển · <a class="driver-credit-link" href="https://github.com/baolongdev" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:500">github.com/baolongdev</a>'
 )
 
 /* ──────────────────────────── Home ──────────────────────────── */
