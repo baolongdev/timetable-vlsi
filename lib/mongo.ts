@@ -30,10 +30,11 @@ export type SyncMetaDoc = {
   lecturersAt: number
 }
 
-/** Presence — ai đang online trên web (heartbeat) */
+/** Presence — 1 doc / địa chỉ mạng (IP hash), client không đổi được identity */
 export type PresenceDoc = {
+  /** = clientKey = hash(IP) */
   _id: string
-  sessionId: string
+  clientKey: string
   displayName: string
   anonymous: boolean
   path?: string

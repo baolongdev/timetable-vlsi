@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 
+import {
+  getClientIp,
+  hashClientIp,
+  shortClientLabel,
+} from "@/lib/client-ip"
 import { hasMongo, presenceCol, type PresenceDoc } from "@/lib/mongo"
 import type { PresenceUser } from "@/types/presence"
 
@@ -10,30 +15,37 @@ const ONLINE_MS = 45_000
 /** Dọn bản ghi cũ hơn */
 const STALE_MS = 120_000
 
-function toUser(doc: PresenceDoc): PresenceUser {
+function toUser(doc: PresenceDoc, selfKey: string): PresenceUser {
   return {
-    sessionId: doc.sessionId,
+    clientKey: doc.clientKey,
+    networkTag: shortClientLabel(doc.clientKey),
     displayName: doc.displayName,
     anonymous: doc.anonymous,
     path: doc.path,
     lastSeen: doc.lastSeen,
+    isSelf: doc.clientKey === selfKey,
   }
 }
 
-/** GET — danh sách người đang online */
-export async function GET() {
+function selfKeyFromRequest(request: NextRequest): string {
+  return hashClientIp(getClientIp(request))
+}
+
+/** GET — danh sách người đang online (identity = IP hash) */
+export async function GET(request: NextRequest) {
   if (!hasMongo()) {
     return NextResponse.json({
       configured: false,
       users: [] as PresenceUser[],
       count: 0,
+      selfKey: null as string | null,
     })
   }
 
   try {
+    const selfKey = selfKeyFromRequest(request)
     const col = await presenceCol()
     const now = Date.now()
-    // Dọn stale (best-effort)
     await col.deleteMany({ lastSeen: { $lt: now - STALE_MS } })
 
     const docs = await col
@@ -42,22 +54,32 @@ export async function GET() {
       .limit(50)
       .toArray()
 
-    const users = docs.map(toUser)
+    const users = docs.map((d) => toUser(d, selfKey))
     return NextResponse.json({
       configured: true,
       users,
       count: users.length,
+      selfKey,
     })
   } catch (e) {
     console.error("[api/presence GET]", e)
     return NextResponse.json(
-      { configured: true, users: [], count: 0, error: "mongo_error" },
+      {
+        configured: true,
+        users: [],
+        count: 0,
+        selfKey: null,
+        error: "mongo_error",
+      },
       { status: 502 }
     )
   }
 }
 
-/** POST — heartbeat / cập nhật tên */
+/**
+ * POST — heartbeat / cập nhật tên hiển thị.
+ * Identity lấy từ IP server-side — bỏ qua mọi id do client gửi.
+ */
 export async function POST(request: NextRequest) {
   if (!hasMongo()) {
     return NextResponse.json({ error: "mongo_not_configured" }, { status: 503 })
@@ -65,16 +87,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as {
-      sessionId?: unknown
       displayName?: unknown
       anonymous?: unknown
       path?: unknown
+      // sessionId cũ — bỏ qua (không tin client)
+      sessionId?: unknown
     }
+    void body.sessionId
 
-    const sessionId =
-      typeof body.sessionId === "string" ? body.sessionId.trim() : ""
-    if (!sessionId || sessionId.length > 80) {
-      return NextResponse.json({ error: "invalid_session" }, { status: 400 })
+    const clientKey = selfKeyFromRequest(request)
+    if (!clientKey || clientKey === hashClientIp("unknown")) {
+      // Vẫn cho hoạt động nhưng gắn "unknown" — hiếm khi xảy ra trên Vercel
     }
 
     const anonymous = Boolean(body.anonymous)
@@ -91,15 +114,22 @@ export async function POST(request: NextRequest) {
 
     const col = await presenceCol()
     const doc: PresenceDoc = {
-      _id: sessionId,
-      sessionId,
+      _id: clientKey,
+      clientKey,
       displayName,
       anonymous: anonymous || displayName === "Ẩn danh",
       path,
       lastSeen: now,
     }
-    await col.replaceOne({ _id: sessionId }, doc, { upsert: true })
+    // replace theo _id = IP hash → 1 mạng = 1 người (nhiều tab gộp 1)
+    await col.replaceOne({ _id: clientKey }, doc, { upsert: true })
     await col.deleteMany({ lastSeen: { $lt: now - STALE_MS } })
+
+    // Dọn schema cũ (sessionId client-generated) nếu còn
+    await col.deleteMany({
+      sessionId: { $exists: true },
+      clientKey: { $exists: false },
+    } as never)
 
     const docs = await col
       .find({ lastSeen: { $gte: now - ONLINE_MS } })
@@ -109,8 +139,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      users: docs.map(toUser),
+      users: docs.map((d) => toUser(d, clientKey)),
       count: docs.length,
+      selfKey: clientKey,
     })
   } catch (e) {
     console.error("[api/presence POST]", e)
@@ -118,22 +149,18 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/** DELETE — rời trang (best-effort) */
+/**
+ * DELETE — rời trang: xóa theo IP của request (không tin query client).
+ */
 export async function DELETE(request: NextRequest) {
   if (!hasMongo()) {
     return NextResponse.json({ ok: true })
   }
 
   try {
-    const sessionId =
-      request.nextUrl.searchParams.get("sessionId")?.trim() ||
-      ((await request.json().catch(() => null)) as { sessionId?: string } | null)
-        ?.sessionId
-
-    if (sessionId) {
-      const col = await presenceCol()
-      await col.deleteOne({ _id: sessionId })
-    }
+    const clientKey = selfKeyFromRequest(request)
+    const col = await presenceCol()
+    await col.deleteOne({ _id: clientKey })
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error("[api/presence DELETE]", e)
