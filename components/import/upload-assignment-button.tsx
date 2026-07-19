@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { appToast } from "@/lib/app-toast"
 import { departmentStore } from "@/lib/department-store"
 import {
   parseWorkbookSheet,
@@ -85,13 +86,25 @@ export function UploadAssignmentButton({
   const runImport = () => {
     if (!parsed || chosen.size === 0) return
     const ids: string[] = []
+    const names: string[] = []
     for (const sheet of parsed.sheets) {
       if (!chosen.has(sheet.name)) continue
       const sections = parseWorkbookSheet(parsed, sheet.name)
-      ids.push(departmentStore.addDepartment(sheet.name, fileName, sections))
+      ids.push(
+        departmentStore.addDepartment(sheet.name, fileName, sections, {
+          silent: true,
+        })
+      )
+      names.push(sheet.name)
     }
     setPickerOpen(false)
     setParsed(null)
+    appToast.success(
+      names.length === 1
+        ? `Đã import khoa «${names[0]}»`
+        : `Đã import ${names.length} khoa`,
+      names.length > 1 ? names.join(", ") : undefined
+    )
     onImported?.(ids)
   }
 

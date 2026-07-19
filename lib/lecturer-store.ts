@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { initialLecturers } from "@/data/lecturers"
+import { appToast } from "@/lib/app-toast"
 import { fetchSyncSnapshot, pushLecturers } from "@/lib/sync-client"
 import type { Lecturer } from "@/types/lecturer"
 
@@ -25,6 +26,7 @@ type GlobalLecturerStore = {
   pollTimer: number | null
   remoteConfigured: boolean | null
   seeded: boolean
+  hasRemoteApplied: boolean
 }
 
 export type LecturerStoreSnapshot = {
@@ -36,6 +38,23 @@ export type LecturerStoreSnapshot = {
 
 const g = globalThis as unknown as {
   __timetableLecturerStore?: GlobalLecturerStore
+}
+
+function fingerprintLecturers(list: Lecturer[]): string {
+  try {
+    return JSON.stringify(
+      list.map((l) => ({
+        id: l.id,
+        name: l.name,
+        role: l.role,
+        staffId: l.staffId,
+        email: l.email,
+        phone: l.phone,
+      }))
+    )
+  } catch {
+    return String(list.length)
+  }
 }
 
 function getG(): GlobalLecturerStore {
@@ -57,6 +76,7 @@ function getG(): GlobalLecturerStore {
       pollTimer: null,
       remoteConfigured: null,
       seeded: false,
+      hasRemoteApplied: false,
     }
   }
   return g.__timetableLecturerStore
@@ -204,6 +224,11 @@ export async function pullLecturersFromRemote(): Promise<boolean> {
     return true
   }
 
+  const prevFp = fingerprintLecturers(store.state.lecturers)
+  const nextFp = fingerprintLecturers(data.lecturers)
+  const changed = prevFp !== nextFp
+  const firstApply = !store.hasRemoteApplied
+
   applyState(
     {
       lecturers: data.lecturers,
@@ -211,6 +236,15 @@ export async function pullLecturersFromRemote(): Promise<boolean> {
     },
     { skipRemote: true }
   )
+  store.hasRemoteApplied = true
+
+  if (changed) {
+    if (firstApply) {
+      appToast.remoteLoaded("lecturers")
+    } else {
+      appToast.remoteUpdate("lecturers")
+    }
+  }
   return true
 }
 
@@ -280,6 +314,7 @@ export const lecturerStore = {
             : l
         )
       )
+      appToast.success("Đã cập nhật giảng viên", data.name)
       return data.id
     }
     const id = String(
@@ -297,13 +332,16 @@ export const lecturerStore = {
         staffId: data.staffId,
       },
     ])
+    appToast.success("Đã thêm giảng viên", data.name)
     return id
   },
 
   remove(id: string) {
     ensureHydrated()
     const store = getG()
+    const name = store.state.lecturers.find((l) => l.id === id)?.name ?? id
     persist(store.state.lecturers.filter((l) => l.id !== id))
+    appToast.success("Đã xóa giảng viên", name)
   },
 }
 

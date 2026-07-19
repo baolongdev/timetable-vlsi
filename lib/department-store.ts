@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { appToast } from "@/lib/app-toast"
 import {
   deleteDepartmentRemote,
   fetchSyncSnapshot,
@@ -39,6 +40,8 @@ type GlobalDeptStore = {
   pushTimer: number | null
   pollTimer: number | null
   remoteConfigured: boolean | null
+  /** Đã apply ít nhất 1 lần từ server (để toast "cập nhật" vs "tải lần đầu") */
+  hasRemoteApplied: boolean
 }
 
 export type DeptStoreSnapshot = {
@@ -68,9 +71,25 @@ function getG(): GlobalDeptStore {
       pushTimer: null,
       pollTimer: null,
       remoteConfigured: null,
+      hasRemoteApplied: false,
     }
   }
   return g.__timetableDeptStore
+}
+
+function fingerprintDepartments(list: Department[]): string {
+  try {
+    return JSON.stringify(
+      list.map((d) => ({
+        id: d.id,
+        uploadedAt: d.uploadedAt,
+        n: d.sections.length,
+        a: d.assignments,
+      }))
+    )
+  } catch {
+    return String(list.length)
+  }
 }
 
 function slugify(name: string): string {
@@ -230,6 +249,11 @@ export async function pullDepartmentsFromRemote(): Promise<boolean> {
   }
 
   // Server thắng → replace local (không push lại ngay)
+  const prevFp = fingerprintDepartments(store.state.departments)
+  const nextFp = fingerprintDepartments(data.departments)
+  const changed = prevFp !== nextFp
+  const firstApply = !store.hasRemoteApplied
+
   applyState(
     {
       departments: data.departments,
@@ -237,6 +261,15 @@ export async function pullDepartmentsFromRemote(): Promise<boolean> {
     },
     { skipRemote: true }
   )
+  store.hasRemoteApplied = true
+
+  if (changed) {
+    if (firstApply && store.state.departments.length > 0) {
+      appToast.remoteLoaded("departments")
+    } else if (!firstApply) {
+      appToast.remoteUpdate("departments")
+    }
+  }
   return true
 }
 
@@ -281,7 +314,8 @@ export const departmentStore = {
   addDepartment(
     sheetName: string,
     fileName: string,
-    sections: ImportedSection[]
+    sections: ImportedSection[],
+    opts?: { silent?: boolean }
   ) {
     ensureHydrated()
     const store = getG()
@@ -309,19 +343,32 @@ export const departmentStore = {
     persist(departments)
     // Đẩy ngay khoa vừa import (không chờ debounce full list)
     void pushOneDepartment(dept)
+    if (!opts?.silent) {
+      if (existing) {
+        appToast.success(`Đã cập nhật khoa «${sheetName}»`, `${sections.length} nhóm lớp`)
+      } else {
+        appToast.success(`Đã thêm khoa «${sheetName}»`, `${sections.length} nhóm lớp`)
+      }
+    }
     return id
   },
 
-  removeDepartment(id: string) {
+  removeDepartment(id: string, opts?: { silent?: boolean }) {
     ensureHydrated()
     const store = getG()
+    const name = store.state.departments.find((d) => d.id === id)?.name ?? id
     persist(store.state.departments.filter((d) => d.id !== id))
     void deleteDepartmentRemote(id)
+    if (!opts?.silent) {
+      appToast.success(`Đã xóa khoa «${name}»`)
+    }
   },
 
-  assign(deptId: string, key: string, patch: Assignment) {
+  assign(deptId: string, key: string, patch: Assignment, opts?: { silent?: boolean }) {
     ensureHydrated()
     const store = getG()
+    const deptName =
+      store.state.departments.find((d) => d.id === deptId)?.name ?? deptId
     persist(
       store.state.departments.map((d) =>
         d.id === deptId
@@ -336,6 +383,15 @@ export const departmentStore = {
       )
     )
     void pushAssignmentRemote(deptId, key, patch)
+    if (!opts?.silent) {
+      const parts = [
+        patch.lead !== undefined ? `Phụ trách: ${patch.lead || "—"}` : null,
+        patch.teacher !== undefined
+          ? `Giảng dạy: ${patch.teacher || "—"}`
+          : null,
+      ].filter(Boolean)
+      appToast.success("Đã lưu phân công", parts.join(" · ") || deptName)
+    }
   },
 }
 

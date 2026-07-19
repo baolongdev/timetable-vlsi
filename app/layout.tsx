@@ -5,6 +5,7 @@ import { ContentProtection } from "@/components/content-protection"
 import { HelpDialog } from "@/components/help-dialog"
 import { OnboardingTour } from "@/components/onboarding-tour"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
   SITE_DESCRIPTION,
@@ -95,6 +96,7 @@ export default function RootLayout({
             {children}
             <HelpDialog />
             <OnboardingTour />
+            <Toaster />
           </TooltipProvider>
         </ThemeProvider>
       </body>
