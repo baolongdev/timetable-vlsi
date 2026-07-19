@@ -30,7 +30,9 @@ import { getInitials, getPersonColor } from "@/lib/person-color"
 import { cn } from "@/lib/utils"
 import type { PresenceUser } from "@/types/presence"
 
-const PROFILE_KEY = "vlsi-presence-profile-v1"
+/** localStorage — OnboardingTour chờ key này ready trước khi chạy driver.js */
+export const PRESENCE_PROFILE_KEY = "vlsi-presence-profile-v1"
+const PROFILE_KEY = PRESENCE_PROFILE_KEY
 const HEARTBEAT_MS = 15_000
 const MAX_AVATARS = 4
 
@@ -306,8 +308,19 @@ export function PresenceProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-function usePresence() {
+export function usePresence() {
   return React.useContext(PresenceContext)
+}
+
+/** true khi đã mount + user đã chọn tên / ẩn danh */
+export function usePresenceReady(): boolean {
+  const ctx = React.useContext(PresenceContext)
+  return Boolean(ctx?.mounted && ctx?.ready)
+}
+
+/** Đọc localStorage — dùng ngoài React nếu cần */
+export function isPresenceProfileReady(): boolean {
+  return loadProfile().ready
 }
 
 /**

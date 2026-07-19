@@ -12,6 +12,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { usePresenceReady } from "@/components/presence-widget"
 import {
   hasCompletedPageTour,
   hasCompletedTourClient,
@@ -722,15 +723,20 @@ export function TourHelpButton({ className }: { className?: string }) {
 
 /**
  * Tự chạy tour lần đầu theo từng trang.
+ * - Chỉ sau khi user nhập tên / ẩn danh (presence ready).
  * - Lần đầu dùng app (chưa complete global): bắt buộc (force false).
  * - Trang mới chưa xem tour: auto chạy có thể bỏ qua (force true).
  * - Nút Hướng dẫn: luôn force true.
  */
 export function OnboardingTour() {
   const pathname = usePathname()
+  const presenceReady = usePresenceReady()
   const startedPagesRef = React.useRef<Set<TourPage>>(new Set())
 
   React.useEffect(() => {
+    // Chờ dialog tên xong — không chồng driver.js lên form nhập tên
+    if (!presenceReady) return
+
     const page = resolveTourPage(pathname)
     if (!page) return
     if (startedPagesRef.current.has(page)) return
@@ -758,6 +764,7 @@ export function OnboardingTour() {
 
       if (cancelled || hasCompletedPageTour(page)) return
 
+      // Chờ dialog đóng / layout ổn định rồi mới drive
       timer = window.setTimeout(() => {
         if (cancelled) return
         let tries = 0
@@ -765,7 +772,10 @@ export function OnboardingTour() {
           if (cancelled) return
           const steps = buildStepsForPage(page)
           if (steps.length >= 2 || tries >= 12) {
-            if (!startedPagesRef.current.has(page) && !hasCompletedPageTour(page)) {
+            if (
+              !startedPagesRef.current.has(page) &&
+              !hasCompletedPageTour(page)
+            ) {
               startedPagesRef.current.add(page)
               // Lần đầu tuyệt đối: bắt buộc. Các trang sau: có thể đóng.
               const isFirstEver = !hasCompletedTourClient()
@@ -780,7 +790,7 @@ export function OnboardingTour() {
           timer = window.setTimeout(tryStart, 250)
         }
         tryStart()
-      }, 600)
+      }, 400)
     }
 
     void run()
@@ -789,7 +799,7 @@ export function OnboardingTour() {
       cancelled = true
       if (timer) window.clearTimeout(timer)
     }
-  }, [pathname])
+  }, [pathname, presenceReady])
 
   return null
 }
