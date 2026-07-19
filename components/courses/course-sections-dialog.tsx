@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/table"
 import { getSectionDayLabel } from "@/data/sections"
 import { getPeriodRangeLabel } from "@/data/timetable"
+import { LecturerPicker } from "@/components/import/lecturer-picker"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types/course"
+import type { Assignment } from "@/types/import"
 import type { CourseSection } from "@/types/section"
 
 type CourseSectionsDialogProps = {
@@ -29,6 +31,10 @@ type CourseSectionsDialogProps = {
   onOpenChange: (open: boolean) => void
   course: Course | null
   sections: CourseSection[]
+  /** Chế độ file phân công: lấy phân công hiệu lực của một nhóm */
+  getAssignment?: (section: CourseSection) => Assignment
+  /** Chế độ file phân công: cập nhật phân công (key = `${code}-${group}`) */
+  onAssign?: (key: string, patch: Assignment) => void
 }
 
 export function CourseSectionsDialog({
@@ -36,12 +42,21 @@ export function CourseSectionsDialog({
   onOpenChange,
   course,
   sections,
+  getAssignment,
+  onAssign,
 }: CourseSectionsDialogProps) {
   if (!course) return null
 
+  const assignable = Boolean(getAssignment && onAssign)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent
+        className={cn(
+          "gap-0 overflow-hidden p-0",
+          assignable ? "sm:max-w-5xl" : "sm:max-w-3xl"
+        )}
+      >
         <div className="flex max-h-[80dvh] flex-col gap-4 p-6">
           <DialogHeader className="gap-1.5">
             <DialogTitle className="text-lg font-semibold tracking-tight">
@@ -89,6 +104,16 @@ export function CourseSectionsDialog({
                       Tuần học
                     </TableHead>
                     <TableHead className="w-[50px] text-center">NN</TableHead>
+                    {assignable ? (
+                      <>
+                        <TableHead className="w-[180px]">
+                          CB phụ trách
+                        </TableHead>
+                        <TableHead className="w-[180px]">
+                          CB giảng dạy
+                        </TableHead>
+                      </>
+                    ) : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -138,6 +163,32 @@ export function CourseSectionsDialog({
                           {s.language}
                         </Badge>
                       </TableCell>
+                      {assignable ? (
+                        <>
+                          <TableCell>
+                            <LecturerPicker
+                              value={getAssignment!(s).lead ?? null}
+                              onValueChange={(value) =>
+                                onAssign!(`${s.code}-${s.group}`, {
+                                  lead: value ?? undefined,
+                                })
+                              }
+                              placeholder="Chọn…"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <LecturerPicker
+                              value={getAssignment!(s).teacher ?? null}
+                              onValueChange={(value) =>
+                                onAssign!(`${s.code}-${s.group}`, {
+                                  teacher: value ?? undefined,
+                                })
+                              }
+                              placeholder="Chọn…"
+                            />
+                          </TableCell>
+                        </>
+                      ) : null}
                     </TableRow>
                   ))}
                 </TableBody>

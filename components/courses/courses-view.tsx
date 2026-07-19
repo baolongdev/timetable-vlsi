@@ -11,11 +11,13 @@ import {
   Search,
   Trash2,
   Users,
+  X,
 } from "lucide-react"
 
 import { CourseDeleteDialog } from "@/components/courses/course-delete-dialog"
 import { CourseFormDialog } from "@/components/courses/course-form-dialog"
 import { CourseSectionsDialog } from "@/components/courses/course-sections-dialog"
+import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { LecturerChip } from "@/components/lecturer-chip"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { pagePad } from "@/components/timetable/layout"
@@ -41,6 +43,7 @@ import {
 import { initialCourses } from "@/data/courses"
 import { initialLecturers } from "@/data/lecturers"
 import { getSectionsForCourse } from "@/data/sections"
+import { useImportStore } from "@/lib/use-import-store"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types/course"
 import type { CourseSection } from "@/types/section"
@@ -58,6 +61,54 @@ export function CoursesView({
   const [search, setSearch] = React.useState("")
   const [lecturerFilter, setLecturerFilter] = React.useState<string>("all")
 
+  const importStore = useImportStore()
+
+  // Chế độ file phân công: sections + danh sách môn sinh từ file Excel
+  const effectiveSections = React.useMemo<CourseSection[]>(() => {
+    if (!importStore.hasImport) return sections ?? []
+    return importStore.sections.map((s) => ({
+      code: s.code,
+      courseName: s.courseName,
+      group: s.group,
+      day: s.day,
+      startPeriod: s.startPeriod,
+      endPeriod: s.endPeriod,
+      capacity: s.capacity,
+      room: s.room,
+      weeksLabel: s.weeksLabel,
+      language: s.language,
+    }))
+  }, [importStore, sections])
+
+  const effectiveCourses = React.useMemo<Course[]>(() => {
+    if (!importStore.hasImport) return courses
+    // Gom môn từ file: mỗi MMH một dòng; phụ trách = lead được chọn nhiều nhất
+    const byCode = new Map<string, Course & { _leads: string[] }>()
+    for (const s of importStore.sections) {
+      const a = importStore.getAssignment(s)
+      let entry = byCode.get(s.code)
+      if (!entry) {
+        entry = {
+          id: s.code,
+          code: s.code,
+          name: s.courseName,
+          leadLecturer: undefined,
+          theoryLecturers: [],
+          practiceLecturers: [],
+          _leads: [],
+        }
+        byCode.set(s.code, entry)
+      }
+      if (a.lead) entry._leads.push(a.lead)
+      if (a.teacher && !entry.theoryLecturers.includes(a.teacher))
+        entry.theoryLecturers.push(a.teacher)
+    }
+    return [...byCode.values()].map(({ _leads, ...c }) => ({
+      ...c,
+      leadLecturer: _leads[0],
+    }))
+  }, [importStore, courses])
+
   const [formOpen, setFormOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<Course | null>(null)
 
@@ -74,7 +125,7 @@ export function CoursesView({
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()
-    return courses.filter((c) => {
+    return effectiveCourses.filter((c) => {
       const team = [
         c.leadLecturer,
         ...c.theoryLecturers,
@@ -92,7 +143,7 @@ export function CoursesView({
 
       return matchSearch && matchLecturer
     })
-  }, [courses, search, lecturerFilter])
+  }, [effectiveCourses, search, lecturerFilter])
 
   const openCreate = () => {
     setEditing(null)
@@ -149,11 +200,37 @@ export function CoursesView({
                 Môn học
               </h1>
               <p className="text-sm text-muted-foreground">
-                Môn học Tổ VLSI · {courses.length} môn
+                {importStore.hasImport ? (
+                  <>
+                    Từ file{" "}
+                    <span className="font-medium text-foreground/80">
+                      {importStore.fileName}
+                    </span>{" "}
+                    · {effectiveCourses.length} môn ·{" "}
+                    {importStore.sections.length} nhóm lớp
+                  </>
+                ) : (
+                  <>Môn học Tổ VLSI · {effectiveCourses.length} môn</>
+                )}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <UploadAssignmentButton
+              className="transition-opacity duration-150 hover:opacity-80"
+              onImported={importStore.importSections}
+            />
+            {importStore.hasImport ? (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={importStore.clear}
+                aria-label="Gỡ file phân công"
+                className="text-muted-foreground"
+              >
+                <X />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -252,7 +329,7 @@ export function CoursesView({
                   const sectionCount = getSectionsForCourse(
                     course.code,
                     course.name,
-                    sections
+                    effectiveSections
                   ).length
 
                   return (
@@ -381,7 +458,28 @@ export function CoursesView({
         onOpenChange={setSectionsOpen}
         course={viewing}
         sections={
-          viewing ? getSectionsForCourse(viewing.code, viewing.name, sections) : []
+          viewing
+            ? getSectionsForCourse(
+                viewing.code,
+                viewing.name,
+                effectiveSections
+              )
+            : []
+        }
+        getAssignment={
+          importStore.hasImport
+            ? (s) => {
+                const src = importStore.sections.find(
+                  (i) => i.code === s.code && i.group === s.group
+                )
+                return src
+                  ? importStore.getAssignment(src)
+                  : { lead: undefined, teacher: undefined }
+              }
+            : undefined
+        }
+        onAssign={
+          importStore.hasImport ? importStore.assign : undefined
         }
       />
     </div>

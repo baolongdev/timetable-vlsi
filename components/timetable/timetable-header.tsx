@@ -9,11 +9,14 @@ import { cn } from "@/lib/utils"
 
 type TimetableHeaderProps = {
   onExport: () => void
+  /** Slot cho nút upload Excel + badge file đã import */
+  importSlot?: React.ReactNode
   className?: string
 }
 
 export function TimetableHeader({
   onExport,
+  importSlot,
   className,
 }: TimetableHeaderProps) {
   return (
@@ -35,6 +38,7 @@ export function TimetableHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-1">
+        {importSlot}
         <Button
           variant="ghost"
           size="sm"

@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LecturerChip } from "@/components/lecturer-chip"
+import { LecturerPicker } from "@/components/import/lecturer-picker"
 import {
   Combobox,
   ComboboxContent,
@@ -55,6 +56,10 @@ type TimetableDialogProps = {
   onOpenChange: (open: boolean) => void
   /** Đổi giảng viên trực tiếp cho nhóm lớp này (chỉ trong phiên) */
   onLecturerChange?: (scheduleId: string, lecturer: string) => void
+  /** Chế độ file phân công: giá trị hiện tại của 2 vai trò */
+  assignment?: { lead?: string; teacher?: string }
+  /** Chế độ file phân công: chọn cán bộ phụ trách / giảng dạy */
+  onAssignmentChange?: (patch: { lead?: string; teacher?: string }) => void
 }
 
 function Row({
@@ -86,6 +91,8 @@ export function TimetableDialog({
   open,
   onOpenChange,
   onLecturerChange,
+  assignment,
+  onAssignmentChange,
 }: TimetableDialogProps) {
   const [editingLecturer, setEditingLecturer] = React.useState(false)
 
@@ -192,6 +199,38 @@ export function TimetableDialog({
             </TabsContent>
 
             <TabsContent value="people" className="mt-0 flex flex-col gap-1">
+              {assignment && onAssignmentChange ? (
+                <>
+                  {/* Phân công từ file Excel — chọn trực tiếp */}
+                  <div className="flex flex-col gap-3 pb-2">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Cán bộ phụ trách
+                      </span>
+                      <LecturerPicker
+                        value={assignment.lead ?? null}
+                        onValueChange={(value) =>
+                          onAssignmentChange({ lead: value ?? undefined })
+                        }
+                        placeholder="Chọn cán bộ phụ trách…"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Cán bộ giảng dạy
+                      </span>
+                      <LecturerPicker
+                        value={assignment.teacher ?? null}
+                        onValueChange={(value) =>
+                          onAssignmentChange({ teacher: value ?? undefined })
+                        }
+                        placeholder="Chọn cán bộ giảng dạy…"
+                      />
+                    </div>
+                  </div>
+                  <Separator className="mb-2" />
+                </>
+              ) : null}
               <div className="flex items-start gap-3 py-2">
                 <span
                   className={cn(

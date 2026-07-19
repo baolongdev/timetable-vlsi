@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { X } from "lucide-react"
 
+import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { pagePad, sectionGap } from "@/components/timetable/layout"
 import { TimetableDialog } from "@/components/timetable/timetable-dialog"
 import { TimetableEmpty } from "@/components/timetable/timetable-empty"
@@ -9,6 +11,7 @@ import { TimetableGrid } from "@/components/timetable/timetable-grid"
 import { TimetableHeader } from "@/components/timetable/timetable-header"
 import { TimetableMobile } from "@/components/timetable/timetable-mobile"
 import { TimetableToolbar } from "@/components/timetable/timetable-toolbar"
+import { Badge } from "@/components/ui/badge"
 import {
   filterSchedules,
   getUniqueCourses,
@@ -16,7 +19,9 @@ import {
   getUniqueRooms,
   schedules as staticSchedules,
 } from "@/data/timetable"
+import { useImportStore } from "@/lib/use-import-store"
 import { cn } from "@/lib/utils"
+import { sectionKey } from "@/types/import"
 import type { Schedule, TimetableFilters } from "@/types/timetable"
 
 const INITIAL_FILTERS: TimetableFilters = {
@@ -44,18 +49,49 @@ export function TimetableView({
   >({})
   const searchInputRef = React.useRef<HTMLInputElement>(null)
 
+  const importStore = useImportStore()
+
+  // Ưu tiên dữ liệu Excel đã upload; chưa upload thì dùng data mặc định
+  const baseSchedules = React.useMemo<Schedule[]>(() => {
+    if (!importStore.hasImport) return schedules
+    return importStore.sections
+      .filter((s) => s.endPeriod <= 12)
+      .map((s, i) => {
+        const a = importStore.getAssignment(s)
+        return {
+          id: `${sectionKey(s)}-${i}`,
+          courseCode: s.code,
+          courseName: s.courseName,
+          lecturer: a.teacher || a.lead || "Chưa phân công",
+          room: s.room,
+          day: s.day - 1,
+          startPeriod: s.startPeriod,
+          endPeriod: s.endPeriod,
+          className: s.group,
+          capacity: s.capacity,
+          weeks: s.weeksLabel,
+        }
+      })
+  }, [importStore, schedules])
+
   const effectiveSchedules = React.useMemo(
     () =>
-      schedules.map((s) =>
+      baseSchedules.map((s) =>
         lecturerOverrides[s.id]
           ? { ...s, lecturer: lecturerOverrides[s.id] }
           : s
       ),
-    [schedules, lecturerOverrides]
+    [baseSchedules, lecturerOverrides]
   )
 
   const handleLecturerChange = (scheduleId: string, lecturer: string) => {
-    setLecturerOverrides((prev) => ({ ...prev, [scheduleId]: lecturer }))
+    if (importStore.hasImport) {
+      // schedule.id có dạng `${code}-${group}-${i}` — cắt bỏ index cuối
+      const key = scheduleId.replace(/-\d+$/, "")
+      importStore.assign(key, { teacher: lecturer })
+    } else {
+      setLecturerOverrides((prev) => ({ ...prev, [scheduleId]: lecturer }))
+    }
     setSelected((prev) =>
       prev && prev.id === scheduleId ? { ...prev, lecturer } : prev
     )
@@ -150,7 +186,34 @@ export function TimetableView({
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col", sectionGap)}>
-        <TimetableHeader onExport={handleExport} />
+        <TimetableHeader
+          onExport={handleExport}
+          importSlot={
+            <div className="flex items-center gap-2">
+              <UploadAssignmentButton
+                className="transition-opacity duration-150 hover:opacity-80"
+                onImported={importStore.importSections}
+              />
+              {importStore.hasImport ? (
+                <Badge
+                  variant="secondary"
+                  className="max-w-40 gap-1 font-normal"
+                  title={importStore.fileName ?? undefined}
+                >
+                  <span className="truncate">{importStore.fileName}</span>
+                  <button
+                    type="button"
+                    onClick={importStore.clear}
+                    aria-label="Gỡ file phân công"
+                    className="opacity-60 hover:opacity-100"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              ) : null}
+            </div>
+          }
+        />
 
         <TimetableToolbar
           filters={filters}
@@ -188,8 +251,55 @@ export function TimetableView({
         schedule={selected}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        onLecturerChange={handleLecturerChange}
+        onLecturerChange={
+          importStore.hasImport ? undefined : handleLecturerChange
+        }
+        assignment={
+          importStore.hasImport && selected
+            ? {
+                ...findImportedDefaults(selected.id),
+                ...importStore.assignments[selectedKey(selected.id)],
+              }
+            : undefined
+        }
+        onAssignmentChange={
+          importStore.hasImport && selected
+            ? (patch) => {
+                const key = selectedKey(selected.id)
+                importStore.assign(key, patch)
+                if (patch.teacher !== undefined || patch.lead !== undefined) {
+                  setSelected((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          lecturer:
+                            patch.teacher ??
+                            patch.lead ??
+                            prev.lecturer,
+                        }
+                      : prev
+                  )
+                }
+              }
+            : undefined
+        }
       />
     </div>
   )
+
+  /** schedule.id có dạng `${code}-${group}-${i}` — cắt index cuối */
+  function selectedKey(scheduleId: string): string {
+    return scheduleId.replace(/-\d+$/, "")
+  }
+
+  function findImportedDefaults(scheduleId: string): {
+    lead?: string
+    teacher?: string
+  } {
+    const key = selectedKey(scheduleId)
+    const section = importStore.sections.find(
+      (s) => `${s.code}-${s.group}` === key
+    )
+    return { lead: section?.lead, teacher: section?.teacher }
+  }
 }
