@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -120,43 +121,50 @@ export function TimetableHeader({
             </TooltipContent>
           </Tooltip>
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuLabel>Tải thời khóa biểu</DropdownMenuLabel>
-            <DropdownMenuItem onClick={onExport}>
-              <Table2 />
-              <div className="flex flex-col">
-                <span>File CSV</span>
-                <span className="text-[11px] text-muted-foreground">
-                  Danh sách đang lọc — mở bằng Excel
-                </span>
-              </div>
-            </DropdownMenuItem>
-            {onExportImage ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  disabled={exporting}
-                  onClick={onExportImage}
-                >
-                  <FileImage />
-                  <div className="flex flex-col">
-                    <span>Ảnh PNG</span>
-                    <span className="text-[11px] text-muted-foreground">
-                      Toàn bộ grid trong một ảnh nét cao
-                    </span>
-                  </div>
-                </DropdownMenuItem>
-              </>
-            ) : null}
-            {onExportPdf ? (
-              <DropdownMenuItem disabled={exporting} onClick={onExportPdf}>
-                <FileText />
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Tải thời khóa biểu</DropdownMenuLabel>
+              <DropdownMenuItem onClick={onExport}>
+                <Table2 />
                 <div className="flex flex-col">
-                  <span>File PDF</span>
+                  <span>File CSV</span>
                   <span className="text-[11px] text-muted-foreground">
-                    Một trang, khổ giấy vừa đúng grid
+                    Danh sách đang lọc — mở bằng Excel
                   </span>
                 </div>
               </DropdownMenuItem>
+            </DropdownMenuGroup>
+            {onExportImage || onExportPdf ? <DropdownMenuSeparator /> : null}
+            {onExportImage || onExportPdf ? (
+              <DropdownMenuGroup>
+                {onExportImage ? (
+                  <DropdownMenuItem
+                    disabled={exporting}
+                    onClick={onExportImage}
+                  >
+                    <FileImage />
+                    <div className="flex flex-col">
+                      <span>Ảnh PNG</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Toàn bộ grid trong một ảnh nét cao
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ) : null}
+                {onExportPdf ? (
+                  <DropdownMenuItem
+                    disabled={exporting}
+                    onClick={onExportPdf}
+                  >
+                    <FileText />
+                    <div className="flex flex-col">
+                      <span>File PDF</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Một trang, khổ giấy vừa đúng grid
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuGroup>
             ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
