@@ -31,6 +31,7 @@ import {
   getPeriodSpanLabel,
 } from "@/data/timetable"
 import { formatLecturerWithStaffId } from "@/lib/lecturer-staff"
+import { useLecturers } from "@/lib/lecturer-store"
 import type { Schedule } from "@/types/timetable"
 
 type TimetableDialogProps = {
@@ -78,6 +79,8 @@ export function TimetableDialog({
   onAssignmentChange,
   conflictMessages,
 }: TimetableDialogProps) {
+  const { lecturers: roster } = useLecturers()
+
   if (!schedule) return null
 
   const timeRange = getPeriodRangeLabel(
@@ -266,7 +269,7 @@ export function TimetableDialog({
                     <p className="text-sm font-medium">
                       {schedule.lecturer === "Chưa phân công"
                         ? "Chưa phân công"
-                        : formatLecturerWithStaffId(schedule.lecturer)}
+                        : formatLecturerWithStaffId(schedule.lecturer, roster)}
                     </p>
                   )}
                 </div>

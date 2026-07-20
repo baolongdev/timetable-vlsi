@@ -49,7 +49,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { initialLecturers } from "@/data/lecturers"
 import { getSectionsForCourse } from "@/data/sections"
 import {
   formatLecturerWithStaffId,
@@ -60,6 +59,7 @@ import {
   getEffectiveAssignment,
   useDepartments,
 } from "@/lib/department-store"
+import { useLecturers } from "@/lib/lecturer-store"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types/course"
 import type { CourseSection } from "@/types/section"
@@ -69,6 +69,7 @@ export function CoursesView() {
   const [lecturerFilter, setLecturerFilter] = React.useState<string>("all")
 
   const { departments, hydrated } = useDepartments()
+  const { lecturers: roster } = useLecturers()
   const params = useParams<{ dept?: string }>()
   const deptParam = params.dept ?? null
 
@@ -270,8 +271,8 @@ export function CoursesView() {
               onValueChange={(value) => setLecturerFilter(value ?? "all")}
               items={[
                 { label: "Tất cả giảng viên", value: "all" },
-                ...initialLecturers.map((l) => ({
-                  label: formatLecturerWithStaffId(l.name),
+                ...roster.map((l) => ({
+                  label: formatLecturerWithStaffId(l.name, roster),
                   value: l.name,
                 })),
               ]}
@@ -283,12 +284,12 @@ export function CoursesView() {
                 <SelectGroup>
                   <SelectItem value="all">Tất cả giảng viên</SelectItem>
                 </SelectGroup>
-                {groupLecturersByRole().map((group, index) => (
+                {groupLecturersByRole(undefined, roster).map((group, index) => (
                   <SelectGroup key={group.role}>
                     {index > 0 ? <SelectSeparator /> : null}
                     <SelectLabel>{group.role}</SelectLabel>
                     {group.names.map((name) => {
-                      const lecturer = initialLecturers.find(
+                      const lecturer = roster.find(
                         (l) => l.name === name
                       )
                       return (

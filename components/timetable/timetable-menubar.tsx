@@ -16,6 +16,7 @@ import {
   formatLecturerWithStaffId,
   groupLecturersByRole,
 } from "@/lib/lecturer-staff"
+import { useLecturers } from "@/lib/lecturer-store"
 import { groupRoomsByBuilding } from "@/lib/room-groups"
 import {
   Menubar,
@@ -61,6 +62,7 @@ export function TimetableMenubar({
   onExport,
 }: TimetableMenubarProps) {
   const { theme, setTheme } = useTheme()
+  const { lecturers: roster } = useLecturers()
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
@@ -163,14 +165,14 @@ export function TimetableMenubar({
                   }}
                 >
                   <MenubarRadioItem value="all">Tất cả</MenubarRadioItem>
-                  {groupLecturersByRole(lecturers).map((group) => (
+                  {groupLecturersByRole(lecturers, roster).map((group) => (
                     <React.Fragment key={group.role}>
                       <MenubarLabel className="text-[11px] text-muted-foreground">
                         {group.role}
                       </MenubarLabel>
                       {group.names.map((name) => (
                         <MenubarRadioItem key={name} value={name}>
-                          {formatLecturerWithStaffId(name)}
+                          {formatLecturerWithStaffId(name, roster)}
                         </MenubarRadioItem>
                       ))}
                     </React.Fragment>

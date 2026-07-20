@@ -12,22 +12,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { formatLecturerWithStaffId } from "@/lib/lecturer-staff"
+import { useLecturers } from "@/lib/lecturer-store"
+import {
+  formatLecturerWithStaffId,
+  getStaffIdByName,
+  groupLecturersByRole,
+} from "@/lib/lecturer-staff"
 import { cn } from "@/lib/utils"
-import { initialLecturers } from "@/data/lecturers"
-import { LECTURER_ROLES } from "@/types/lecturer"
 
 /** Sentinel nội bộ — không hiển thị; SelectValue tự render placeholder */
 const EMPTY = "__empty__"
-
-const lecturerGroups = LECTURER_ROLES.map((role) => ({
-  value: role,
-  items: initialLecturers.filter((l) => l.role === role).map((l) => l.name),
-})).filter((group) => group.items.length > 0)
-
-const staffIdByName = new Map(
-  initialLecturers.map((l) => [l.name, l.staffId])
-)
 
 type SelectOption = { label: string; value: string }
 
@@ -40,6 +34,8 @@ type LecturerPickerProps = {
 
 /**
  * Select chọn 1 giảng viên — nhóm theo vai trò, label có MSCB.
+ * Đọc roster live từ lecturerStore: thêm GV ở trang Giảng viên là
+ * hiện ngay ở đây.
  */
 export function LecturerPicker({
   value,
@@ -47,15 +43,22 @@ export function LecturerPicker({
   placeholder = "Chọn giảng viên…",
   className,
 }: LecturerPickerProps) {
+  const { lecturers } = useLecturers()
+
+  const groups = React.useMemo(
+    () => groupLecturersByRole(undefined, lecturers),
+    [lecturers]
+  )
+
   const items = React.useMemo<SelectOption[]>(
     () => [
       { label: placeholder, value: EMPTY },
-      ...initialLecturers.map((l) => ({
-        label: formatLecturerWithStaffId(l.name),
+      ...lecturers.map((l) => ({
+        label: formatLecturerWithStaffId(l.name, lecturers),
         value: l.name,
       })),
     ],
-    [placeholder]
+    [placeholder, lecturers]
   )
 
   const selectValue =
@@ -82,7 +85,7 @@ export function LecturerPicker({
         <SelectValue placeholder={placeholder}>
           {(selected: string | null) => {
             if (!selected || selected === EMPTY) return placeholder
-            return formatLecturerWithStaffId(selected)
+            return formatLecturerWithStaffId(selected, lecturers)
           }}
         </SelectValue>
       </SelectTrigger>
@@ -93,12 +96,12 @@ export function LecturerPicker({
         <SelectGroup>
           <SelectItem value={EMPTY}>{placeholder}</SelectItem>
         </SelectGroup>
-        {lecturerGroups.map((group, index) => (
-          <SelectGroup key={group.value}>
+        {groups.map((group, index) => (
+          <SelectGroup key={group.role}>
             {index > 0 ? <SelectSeparator /> : null}
-            <SelectLabel>{group.value}</SelectLabel>
-            {group.items.map((name) => {
-              const staffId = staffIdByName.get(name)
+            <SelectLabel>{group.role}</SelectLabel>
+            {group.names.map((name) => {
+              const staffId = getStaffIdByName(name, lecturers)
               return (
                 <SelectItem key={name} value={name}>
                   {staffId ? (

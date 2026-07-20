@@ -38,6 +38,7 @@ import {
   getStaffIdByName,
   groupLecturersByRole,
 } from "@/lib/lecturer-staff"
+import { useLecturers } from "@/lib/lecturer-store"
 import { groupRoomsByBuilding } from "@/lib/room-groups"
 import { cn } from "@/lib/utils"
 import type { TimetableFilters } from "@/types/timetable"
@@ -86,6 +87,8 @@ export function TimetableToolbar({
     })
   }
 
+  const { lecturers: roster } = useLecturers()
+
   // Base UI Select: items = [{ label, value }, …] (docs base-nova)
   const courseItems = React.useMemo<SelectOption[]>(
     () => [
@@ -96,18 +99,18 @@ export function TimetableToolbar({
   )
   // value = tên (để filter), label = tên · MSCB xxxx; UI group theo vai trò
   const lecturerRoleGroups = React.useMemo(
-    () => groupLecturersByRole(lecturers),
-    [lecturers]
+    () => groupLecturersByRole(lecturers, roster),
+    [lecturers, roster]
   )
   const lecturerItems = React.useMemo<SelectOption[]>(
     () => [
       { label: "Tất cả giảng viên", value: "all" },
       ...lecturers.map((name) => ({
-        label: formatLecturerWithStaffId(name),
+        label: formatLecturerWithStaffId(name, roster),
         value: name,
       })),
     ],
-    [lecturers]
+    [lecturers, roster]
   )
   const roomItems = React.useMemo<SelectOption[]>(
     () => [
@@ -217,7 +220,7 @@ export function TimetableToolbar({
                       {index > 0 ? <SelectSeparator /> : null}
                       <SelectLabel>{group.role}</SelectLabel>
                       {group.names.map((name) => {
-                        const staffId = getStaffIdByName(name)
+                        const staffId = getStaffIdByName(name, roster)
                         return (
                           <SelectItem key={name} value={name}>
                             {staffId ? (
@@ -331,7 +334,7 @@ export function TimetableToolbar({
                       </DropdownMenuLabel>
                       {group.names.map((name) => (
                         <DropdownMenuRadioItem key={name} value={name}>
-                          {formatLecturerWithStaffId(name)}
+                          {formatLecturerWithStaffId(name, roster)}
                         </DropdownMenuRadioItem>
                       ))}
                     </React.Fragment>
