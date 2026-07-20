@@ -27,6 +27,8 @@ export type TimetableScrollState = {
 
 export type TimetableGridHandle = {
   scrollByViewport: (direction: 1 | -1) => void
+  /** Node chứa TOÀN BỘ grid (kể cả phần đang cuộn khuất) — dùng export ảnh/PDF */
+  getExportNode: () => HTMLElement | null
 }
 
 type TimetableGridProps = {
@@ -348,9 +350,14 @@ export const TimetableGrid = React.forwardRef<
     el.scrollTo({ left: snapped, behavior: "smooth" })
   }, [])
 
+  const exportNodeRef = React.useRef<HTMLDivElement>(null)
+
   React.useImperativeHandle(
     ref,
-    () => ({ scrollByViewport }),
+    () => ({
+      scrollByViewport,
+      getExportNode: () => exportNodeRef.current,
+    }),
     [scrollByViewport]
   )
 
@@ -381,7 +388,10 @@ export const TimetableGrid = React.forwardRef<
         // cursor-grab mặc định; lúc kéo đổi bằng classList (không re-render)
         className="scrollbar-minimal h-full min-h-0 w-full cursor-grab overflow-auto bg-background touch-none"
       >
-        <div className={periodColVar + " flex w-fit min-w-full flex-col"}>
+        <div
+          ref={exportNodeRef}
+          className={periodColVar + " flex w-fit min-w-full flex-col bg-background"}
+        >
           <DayHeader days={days} gridTemplateColumns={gridTemplateColumns} />
 
           <div

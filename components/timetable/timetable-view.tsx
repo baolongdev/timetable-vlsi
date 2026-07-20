@@ -45,6 +45,7 @@ import {
   getEffectiveAssignment,
   useDepartments,
 } from "@/lib/department-store"
+import { appToast } from "@/lib/app-toast"
 import { cn } from "@/lib/utils"
 import { sectionKey } from "@/types/import"
 import type { Schedule, TimetableFilters } from "@/types/timetable"
@@ -227,6 +228,36 @@ export function TimetableView() {
     URL.revokeObjectURL(url)
   }
 
+  const [exporting, setExporting] = React.useState(false)
+
+  const runVisualExport = async (kind: "image" | "pdf") => {
+    const node = gridRef.current?.getExportNode()
+    if (!node || exporting) return
+    setExporting(true)
+    try {
+      // Import lười — html-to-image/jspdf chỉ tải khi bấm export
+      const mod = await import("@/lib/export-timetable")
+      const fileName = `timetable-${dept?.id ?? "export"}`
+      if (kind === "image") {
+        await mod.exportTimetableAsImage(node, fileName)
+      } else {
+        await mod.exportTimetableAsPdf(node, fileName, dept?.name)
+      }
+      appToast.success(
+        kind === "image" ? "Đã tải ảnh PNG" : "Đã tải file PDF",
+        `${fileName}.${kind === "image" ? "png" : "pdf"}`
+      )
+    } catch (e) {
+      console.error("[export-timetable]", e)
+      appToast.error(
+        "Xuất file thất bại",
+        "Thử lại hoặc thu nhỏ bộ lọc để giảm kích thước grid."
+      )
+    } finally {
+      setExporting(false)
+    }
+  }
+
   React.useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -243,6 +274,9 @@ export function TimetableView() {
       <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col", sectionGap)}>
         <TimetableHeader
           onExport={handleExport}
+          onExportImage={() => void runVisualExport("image")}
+          onExportPdf={() => void runVisualExport("pdf")}
+          exporting={exporting}
           departmentName={dept?.name}
           importSlot={
             <div data-tour="dept-switch" className="flex items-center gap-1">

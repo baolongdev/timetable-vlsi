@@ -1,12 +1,28 @@
 "use client"
 
 import Link from "next/link"
-import { BookOpen, Download, Users } from "lucide-react"
+import {
+  BookOpen,
+  Download,
+  FileImage,
+  FileText,
+  Loader2,
+  Table2,
+  Users,
+} from "lucide-react"
 
 import { TourHelpButton } from "@/components/onboarding-tour"
 import { PresenceHeaderControl } from "@/components/presence-widget"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
@@ -15,7 +31,14 @@ import {
 import { cn } from "@/lib/utils"
 
 type TimetableHeaderProps = {
+  /** Export CSV (danh sách đang lọc) */
   onExport: () => void
+  /** Export ảnh PNG toàn bộ grid */
+  onExportImage?: () => void
+  /** Export PDF một trang */
+  onExportPdf?: () => void
+  /** Đang render ảnh/PDF */
+  exporting?: boolean
   /** Tên khoa / tổ đang xem */
   departmentName?: string
   /** Slot cho nút chuyển khoa / upload */
@@ -27,6 +50,9 @@ type TimetableHeaderProps = {
 
 export function TimetableHeader({
   onExport,
+  onExportImage,
+  onExportPdf,
+  exporting = false,
   departmentName,
   importSlot,
   conflictSlot,
@@ -62,25 +88,78 @@ export function TimetableHeader({
       >
         {importSlot}
         {conflictSlot}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="sm"
-                data-tour="export"
-                onClick={onExport}
-                className="transition-opacity duration-150 hover:opacity-80"
-              />
-            }
-          >
-            <Download data-icon="inline-start" />
-            Export
-          </TooltipTrigger>
-          <TooltipContent>
-            Tải danh sách đang lọc dưới dạng CSV
-          </TooltipContent>
-        </Tooltip>
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      data-tour="export"
+                      disabled={exporting}
+                      className="transition-opacity duration-150 hover:opacity-80"
+                    />
+                  }
+                />
+              }
+            >
+              {exporting ? (
+                <Loader2
+                  data-icon="inline-start"
+                  className="animate-spin"
+                />
+              ) : (
+                <Download data-icon="inline-start" />
+              )}
+              Export
+            </TooltipTrigger>
+            <TooltipContent>
+              Tải thời khóa biểu: CSV · Ảnh PNG · PDF
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent align="end" className="w-64">
+            <DropdownMenuLabel>Tải thời khóa biểu</DropdownMenuLabel>
+            <DropdownMenuItem onClick={onExport}>
+              <Table2 />
+              <div className="flex flex-col">
+                <span>File CSV</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Danh sách đang lọc — mở bằng Excel
+                </span>
+              </div>
+            </DropdownMenuItem>
+            {onExportImage ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={exporting}
+                  onClick={onExportImage}
+                >
+                  <FileImage />
+                  <div className="flex flex-col">
+                    <span>Ảnh PNG</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Toàn bộ grid trong một ảnh nét cao
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+              </>
+            ) : null}
+            {onExportPdf ? (
+              <DropdownMenuItem disabled={exporting} onClick={onExportPdf}>
+                <FileText />
+                <div className="flex flex-col">
+                  <span>File PDF</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    Một trang, khổ giấy vừa đúng grid
+                  </span>
+                </div>
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           variant="ghost"
           size="sm"

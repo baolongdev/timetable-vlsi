@@ -236,6 +236,7 @@ export function TimetableCard({
           </span>
         ) : null}
         <div
+          data-export-exclude="true"
           className={cn(
             "absolute top-2 z-20 flex items-center gap-0.5",
             // Tránh đè icon cảnh báo bên phải
