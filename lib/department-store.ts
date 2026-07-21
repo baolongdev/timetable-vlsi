@@ -364,6 +364,38 @@ export const departmentStore = {
     }
   },
 
+  /** Đổi tên môn học (theo MSMH) — cập nhật mọi nhóm lớp của mã đó */
+  renameCourse(
+    deptId: string,
+    code: string,
+    newName: string,
+    opts?: { silent?: boolean }
+  ) {
+    ensureHydrated()
+    const store = getG()
+    const trimmed = newName.trim()
+    if (!trimmed) return
+
+    let updatedDept: Department | undefined
+    persist(
+      store.state.departments.map((d) => {
+        if (d.id !== deptId) return d
+        updatedDept = {
+          ...d,
+          sections: d.sections.map((s) =>
+            s.code === code ? { ...s, courseName: trimmed } : s
+          ),
+        }
+        return updatedDept
+      })
+    )
+    // Đẩy nguyên khoa (tên môn nằm trong sections)
+    if (updatedDept) void pushOneDepartment(updatedDept)
+    if (!opts?.silent) {
+      appToast.success("Đã đổi tên môn học", `${code} → ${trimmed}`)
+    }
+  },
+
   assign(deptId: string, key: string, patch: Assignment, opts?: { silent?: boolean }) {
     ensureHydrated()
     const store = getG()

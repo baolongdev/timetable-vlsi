@@ -9,10 +9,12 @@ import {
   BookOpen,
   Building2,
   CalendarDays,
+  Pencil,
   Search,
   Users,
 } from "lucide-react"
 
+import { CourseRenameDialog } from "@/components/courses/course-rename-dialog"
 import { LecturerChip } from "@/components/lecturer-chip"
 import { TourHelpButton } from "@/components/onboarding-tour"
 import { PresenceHeaderControl } from "@/components/presence-widget"
@@ -41,6 +43,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Table,
   TableBody,
@@ -131,6 +138,9 @@ export function CoursesView() {
 
   const [sectionsOpen, setSectionsOpen] = React.useState(false)
   const [viewing, setViewing] = React.useState<Course | null>(null)
+
+  const [renameOpen, setRenameOpen] = React.useState(false)
+  const [renaming, setRenaming] = React.useState<Course | null>(null)
 
   const openSections = (course: Course) => {
     setViewing(course)
@@ -406,8 +416,32 @@ export function CoursesView() {
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-[240px] whitespace-normal">
-                        <span className="font-medium tracking-tight">
-                          {course.name}
+                        <span className="group/name flex items-center gap-1">
+                          <span className="font-medium tracking-tight">
+                            {course.name}
+                          </span>
+                          {dept ? (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <Button
+                                    variant="ghost"
+                                    size="icon-xs"
+                                    className="shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/name:opacity-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setRenaming(course)
+                                      setRenameOpen(true)
+                                    }}
+                                    aria-label={`Đổi tên ${course.name}`}
+                                  />
+                                }
+                              >
+                                <Pencil />
+                              </TooltipTrigger>
+                              <TooltipContent>Đổi tên môn học</TooltipContent>
+                            </Tooltip>
+                          ) : null}
                         </span>
                       </TableCell>
                       <TableCell className="text-center">
@@ -473,6 +507,15 @@ export function CoursesView() {
           </Table>
         </div>
       </div>
+
+      <CourseRenameDialog
+        open={renameOpen}
+        onOpenChange={setRenameOpen}
+        course={renaming}
+        onRename={(code, newName) => {
+          if (dept) departmentStore.renameCourse(dept.id, code, newName)
+        }}
+      />
 
       <CourseSectionsDialog
         open={sectionsOpen}
