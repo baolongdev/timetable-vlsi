@@ -49,7 +49,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { getSectionsForCourse } from "@/data/sections"
 import {
   formatLecturerWithStaffId,
   groupLecturersByRole,
@@ -381,10 +380,10 @@ export function CoursesView() {
                 </TableRow>
               ) : (
                 filtered.map((course, index) => {
-                  const sectionCount = getSectionsForCourse(
-                    course.code,
-                    course.name,
-                    effectiveSections
+                  // Mỗi MSMH một dòng riêng — chỉ đếm nhóm của đúng mã đó
+                  // (không gộp CO1024 (TN) vào CO1023 như trước)
+                  const sectionCount = effectiveSections.filter(
+                    (s) => s.code === course.code
                   ).length
 
                   return (
@@ -481,11 +480,7 @@ export function CoursesView() {
         course={viewing}
         sections={
           viewing
-            ? getSectionsForCourse(
-                viewing.code,
-                viewing.name,
-                effectiveSections
-              )
+            ? effectiveSections.filter((s) => s.code === viewing.code)
             : []
         }
         getAssignment={
