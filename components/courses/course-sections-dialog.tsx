@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Clock, MapPin } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronsUpDown, Clock, MapPin } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -36,6 +36,64 @@ type CourseSectionsDialogProps = {
   onAssign?: (key: string, patch: Assignment) => void
 }
 
+type SortKey =
+  | "group"
+  | "day"
+  | "period"
+  | "room"
+  | "capacity"
+  | "weeks"
+  | "language"
+  | "teacher"
+
+type SortState = { key: SortKey; dir: 1 | -1 }
+
+/** Header cột bấm để sort: lần 1 tăng, lần 2 giảm, lần 3 bỏ sort */
+function SortableHead({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  className,
+}: {
+  label: string
+  sortKey: SortKey
+  sort: SortState | null
+  onSort: (key: SortKey) => void
+  className?: string
+}) {
+  const active = sort?.key === sortKey
+  return (
+    <TableHead
+      className={cn(
+        "sticky top-0 z-20 border-b bg-background p-0",
+        className
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={cn(
+          "flex h-10 w-full items-center gap-1 px-2 text-left font-medium",
+          "transition-colors hover:text-foreground",
+          active ? "text-foreground" : "text-muted-foreground"
+        )}
+      >
+        {label}
+        {active ? (
+          sort!.dir === 1 ? (
+            <ArrowUp className="size-3 shrink-0" />
+          ) : (
+            <ArrowDown className="size-3 shrink-0" />
+          )
+        ) : (
+          <ChevronsUpDown className="size-3 shrink-0 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  )
+}
+
 export function CourseSectionsDialog({
   open,
   onOpenChange,
@@ -44,14 +102,61 @@ export function CourseSectionsDialog({
   getAssignment,
   onAssign,
 }: CourseSectionsDialogProps) {
+  const [sort, setSort] = React.useState<SortState | null>(null)
+
+  // Reset sort khi mở môn khác
+  React.useEffect(() => {
+    if (open) setSort(null)
+  }, [open, course?.code])
+
   if (!course) return null
 
   const assignable = Boolean(getAssignment && onAssign)
 
-  // Sort theo nhóm (A01 → CC → L → TN)
-  const sorted = [...sections].sort(
-    (a, b) => a.code.localeCompare(b.code) || a.group.localeCompare(b.group)
-  )
+  const toggleSort = (key: SortKey) => {
+    setSort((prev) => {
+      if (!prev || prev.key !== key) return { key, dir: 1 }
+      if (prev.dir === 1) return { key, dir: -1 }
+      return null
+    })
+  }
+
+  const sortValue = (s: CourseSection): string | number => {
+    switch (sort!.key) {
+      case "group":
+        return s.group
+      case "day":
+        return s.day
+      case "period":
+        return s.startPeriod * 100 + s.endPeriod
+      case "room":
+        return s.room
+      case "capacity":
+        return s.capacity
+      case "weeks":
+        return s.weeksLabel
+      case "language":
+        return s.language
+      case "teacher":
+        return getAssignment?.(s).teacher ?? "￿" // chưa phân công xuống cuối
+    }
+  }
+
+  // Mặc định: sort theo mã + nhóm (A01 → CC → L → TN)
+  const sorted = [...sections].sort((a, b) => {
+    if (sort) {
+      const va = sortValue(a)
+      const vb = sortValue(b)
+      const cmp =
+        typeof va === "number" && typeof vb === "number"
+          ? va - vb
+          : String(va).localeCompare(String(vb), "vi")
+      if (cmp !== 0) return cmp * sort.dir
+    }
+    return (
+      a.code.localeCompare(b.code) || a.group.localeCompare(b.group)
+    )
+  })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -106,31 +211,62 @@ export function CourseSectionsDialog({
                     <TableHead className="sticky top-0 z-20 w-[70px] border-b bg-background">
                       MSMH
                     </TableHead>
-                    <TableHead className="sticky top-0 z-20 w-[70px] border-b bg-background">
-                      Nhóm
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-20 w-[70px] border-b bg-background">
-                      Thứ
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-20 border-b bg-background">
-                      Tiết
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-20 w-[110px] border-b bg-background">
-                      Phòng
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-20 hidden w-[60px] border-b bg-background text-center sm:table-cell">
-                      Sĩ số
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-20 hidden border-b bg-background md:table-cell">
-                      Tuần học
-                    </TableHead>
-                    <TableHead className="sticky top-0 z-20 w-[50px] border-b bg-background text-center">
-                      NN
-                    </TableHead>
+                    <SortableHead
+                      label="Nhóm"
+                      sortKey="group"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[80px]"
+                    />
+                    <SortableHead
+                      label="Thứ"
+                      sortKey="day"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[80px]"
+                    />
+                    <SortableHead
+                      label="Tiết"
+                      sortKey="period"
+                      sort={sort}
+                      onSort={toggleSort}
+                    />
+                    <SortableHead
+                      label="Phòng"
+                      sortKey="room"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[110px]"
+                    />
+                    <SortableHead
+                      label="Sĩ số"
+                      sortKey="capacity"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="hidden w-[80px] sm:table-cell"
+                    />
+                    <SortableHead
+                      label="Tuần học"
+                      sortKey="weeks"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="hidden md:table-cell"
+                    />
+                    <SortableHead
+                      label="NN"
+                      sortKey="language"
+                      sort={sort}
+                      onSort={toggleSort}
+                      className="w-[60px]"
+                    />
                     {assignable ? (
-                      <TableHead className="sticky top-0 z-20 w-[200px] border-b bg-background">
-                        CB giảng dạy
-                      </TableHead>
+                      <SortableHead
+                        label="CB giảng dạy"
+                        sortKey="teacher"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-[200px]"
+                      />
                     ) : null}
                   </TableRow>
                 </TableHeader>
