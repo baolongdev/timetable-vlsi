@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { Clock, MapPin } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -46,6 +47,18 @@ export function CourseSectionsDialog({
   if (!course) return null
 
   const assignable = Boolean(getAssignment && onAssign)
+  const colCount = 8 + (assignable ? 1 : 0)
+
+  // Group theo MSMH: CO2007 (LT) trước, CO2008 (Th)… sau; trong nhóm sort theo Nhóm
+  const groups = new Map<string, CourseSection[]>()
+  for (const s of [...sections].sort(
+    (a, b) =>
+      a.code.localeCompare(b.code) || a.group.localeCompare(b.group)
+  )) {
+    const list = groups.get(s.code)
+    if (list) list.push(s)
+    else groups.set(s.code, [s])
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -129,7 +142,31 @@ export function CourseSectionsDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sections.map((s) => (
+                  {[...groups.entries()].map(([code, groupSections]) => (
+                    <React.Fragment key={code}>
+                      {/* Hàng nhóm MSMH — tên môn con (LT / TN / Th) */}
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell
+                          colSpan={colCount}
+                          className="border-b border-border/60 bg-muted/40 py-1.5"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-semibold tabular-nums">
+                              {code}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {groupSections[0].courseName}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="ml-auto font-mono text-[10px] tabular-nums"
+                            >
+                              {groupSections.length} nhóm
+                            </Badge>
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                      {groupSections.map((s) => (
                     <TableRow key={`${s.code}-${s.group}`}>
                       <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
                         {s.code}
@@ -189,6 +226,8 @@ export function CourseSectionsDialog({
                         </TableCell>
                       ) : null}
                     </TableRow>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
