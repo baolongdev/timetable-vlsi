@@ -48,21 +48,28 @@ type SortKey =
 
 type SortState = { key: SortKey; dir: 1 | -1 }
 
-/** Header cột bấm để sort: lần 1 tăng, lần 2 giảm, lần 3 bỏ sort */
+/**
+ * Header cột sort được — hỗ trợ multi-sort:
+ * - Click: sort theo cột này (bỏ các cột khác); click tiếp đảo chiều / bỏ
+ * - Shift+Click: THÊM cột vào chuỗi sort (ưu tiên theo thứ tự thêm),
+ *   hiện số thứ tự ①②③ cạnh mũi tên
+ */
 function SortableHead({
   label,
   sortKey,
-  sort,
+  sorts,
   onSort,
   className,
 }: {
   label: string
   sortKey: SortKey
-  sort: SortState | null
-  onSort: (key: SortKey) => void
+  sorts: SortState[]
+  onSort: (key: SortKey, additive: boolean) => void
   className?: string
 }) {
-  const active = sort?.key === sortKey
+  const index = sorts.findIndex((s) => s.key === sortKey)
+  const active = index >= 0
+  const dir = active ? sorts[index].dir : null
   return (
     <TableHead
       className={cn(
@@ -72,7 +79,8 @@ function SortableHead({
     >
       <button
         type="button"
-        onClick={() => onSort(sortKey)}
+        onClick={(e) => onSort(sortKey, e.shiftKey)}
+        title={`${label} — click để sort, Shift+click để sort thêm cột`}
         className={cn(
           "flex h-10 w-full items-center gap-1 px-2 text-left font-medium",
           "transition-colors hover:text-foreground",
@@ -81,11 +89,18 @@ function SortableHead({
       >
         {label}
         {active ? (
-          sort!.dir === 1 ? (
-            <ArrowUp className="size-3 shrink-0" />
-          ) : (
-            <ArrowDown className="size-3 shrink-0" />
-          )
+          <span className="flex shrink-0 items-center gap-0.5">
+            {dir === 1 ? (
+              <ArrowUp className="size-3" />
+            ) : (
+              <ArrowDown className="size-3" />
+            )}
+            {sorts.length > 1 ? (
+              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                {index + 1}
+              </span>
+            ) : null}
+          </span>
         ) : (
           <ChevronsUpDown className="size-3 shrink-0 opacity-40" />
         )}
@@ -102,27 +117,38 @@ export function CourseSectionsDialog({
   getAssignment,
   onAssign,
 }: CourseSectionsDialogProps) {
-  const [sort, setSort] = React.useState<SortState | null>(null)
+  const [sorts, setSorts] = React.useState<SortState[]>([])
 
   // Reset sort khi mở môn khác
   React.useEffect(() => {
-    if (open) setSort(null)
+    if (open) setSorts([])
   }, [open, course?.code])
 
   if (!course) return null
 
   const assignable = Boolean(getAssignment && onAssign)
 
-  const toggleSort = (key: SortKey) => {
-    setSort((prev) => {
-      if (!prev || prev.key !== key) return { key, dir: 1 }
-      if (prev.dir === 1) return { key, dir: -1 }
-      return null
+  const toggleSort = (key: SortKey, additive: boolean) => {
+    setSorts((prev) => {
+      const idx = prev.findIndex((s) => s.key === key)
+
+      if (additive) {
+        // Shift+click: thêm/sửa cột trong chuỗi, giữ các cột khác
+        if (idx === -1) return [...prev, { key, dir: 1 }]
+        if (prev[idx].dir === 1)
+          return prev.map((s, i) => (i === idx ? { key, dir: -1 } : s))
+        return prev.filter((_, i) => i !== idx) // bỏ cột khỏi chuỗi
+      }
+
+      // Click thường: chỉ sort cột này
+      if (idx === -1 || prev.length > 1) return [{ key, dir: 1 }]
+      if (prev[idx].dir === 1) return [{ key, dir: -1 }]
+      return []
     })
   }
 
-  const sortValue = (s: CourseSection): string | number => {
-    switch (sort!.key) {
+  const sortValue = (s: CourseSection, key: SortKey): string | number => {
+    switch (key) {
       case "group":
         return s.group
       case "day":
@@ -142,16 +168,16 @@ export function CourseSectionsDialog({
     }
   }
 
-  // Mặc định: sort theo mã + nhóm (A01 → CC → L → TN)
+  // Multi-sort theo thứ tự chuỗi; mặc định: mã + nhóm (A01 → CC → L → TN)
   const sorted = [...sections].sort((a, b) => {
-    if (sort) {
-      const va = sortValue(a)
-      const vb = sortValue(b)
+    for (const { key, dir } of sorts) {
+      const va = sortValue(a, key)
+      const vb = sortValue(b, key)
       const cmp =
         typeof va === "number" && typeof vb === "number"
           ? va - vb
           : String(va).localeCompare(String(vb), "vi")
-      if (cmp !== 0) return cmp * sort.dir
+      if (cmp !== 0) return cmp * dir
     }
     return (
       a.code.localeCompare(b.code) || a.group.localeCompare(b.group)
@@ -214,48 +240,48 @@ export function CourseSectionsDialog({
                     <SortableHead
                       label="Nhóm"
                       sortKey="group"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       className="w-[80px]"
                     />
                     <SortableHead
                       label="Thứ"
                       sortKey="day"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       className="w-[80px]"
                     />
                     <SortableHead
                       label="Tiết"
                       sortKey="period"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                     />
                     <SortableHead
                       label="Phòng"
                       sortKey="room"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       className="w-[110px]"
                     />
                     <SortableHead
                       label="Sĩ số"
                       sortKey="capacity"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       className="hidden w-[80px] sm:table-cell"
                     />
                     <SortableHead
                       label="Tuần học"
                       sortKey="weeks"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       className="hidden md:table-cell"
                     />
                     <SortableHead
                       label="NN"
                       sortKey="language"
-                      sort={sort}
+                      sorts={sorts}
                       onSort={toggleSort}
                       className="w-[60px]"
                     />
@@ -263,7 +289,7 @@ export function CourseSectionsDialog({
                       <SortableHead
                         label="CB giảng dạy"
                         sortKey="teacher"
-                        sort={sort}
+                        sorts={sorts}
                         onSort={toggleSort}
                         className="w-[200px]"
                       />
