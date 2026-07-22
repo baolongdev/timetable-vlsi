@@ -1,9 +1,21 @@
 "use client"
 
 import * as React from "react"
-import { ArrowDown, ArrowUp, ChevronsUpDown, Clock, MapPin } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+  Clock,
+  MapPin,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   Dialog,
   DialogContent,
@@ -34,6 +46,8 @@ type CourseSectionsDialogProps = {
   sections: CourseSection[]
   getAssignment?: (section: CourseSection) => Assignment
   onAssign?: (key: string, patch: Assignment) => void
+  /** Mô tả trùng lịch của một nhóm (nếu có) — hiện cảnh báo trên hàng */
+  getConflict?: (section: CourseSection) => string | undefined
 }
 
 type SortKey =
@@ -116,6 +130,7 @@ export function CourseSectionsDialog({
   sections,
   getAssignment,
   onAssign,
+  getConflict,
 }: CourseSectionsDialogProps) {
   const [sorts, setSorts] = React.useState<SortState[]>([])
 
@@ -127,6 +142,9 @@ export function CourseSectionsDialog({
   if (!course) return null
 
   const assignable = Boolean(getAssignment && onAssign)
+  const conflictCount = getConflict
+    ? sections.filter((s) => getConflict(s)).length
+    : 0
 
   const toggleSort = (key: SortKey, additive: boolean) => {
     setSorts((prev) => {
@@ -209,6 +227,12 @@ export function CourseSectionsDialog({
                   ? `${sections.length} nhóm lớp`
                   : "Chưa có nhóm lớp"}
               </span>
+              {conflictCount > 0 ? (
+                <Badge variant="destructive" className="gap-1 text-[10px]">
+                  <AlertTriangle className="size-3" />
+                  {conflictCount} nhóm trùng lịch
+                </Badge>
+              ) : null}
             </DialogDescription>
           </DialogHeader>
 
@@ -297,18 +321,39 @@ export function CourseSectionsDialog({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sorted.map((s) => (
-                    <TableRow key={`${s.code}-${s.group}`}>
+                  {sorted.map((s) => {
+                    const conflict = getConflict?.(s)
+                    return (
+                    <TableRow
+                      key={`${s.code}-${s.group}`}
+                      className={cn(conflict && "bg-destructive/5")}
+                    >
                       <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
                         {s.code}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className="font-mono text-[11px]"
-                        >
-                          {s.group}
-                        </Badge>
+                        <span className="flex items-center gap-1">
+                          <Badge
+                            variant="secondary"
+                            className="font-mono text-[11px]"
+                          >
+                            {s.group}
+                          </Badge>
+                          {conflict ? (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <span className="inline-flex text-destructive" />
+                                }
+                              >
+                                <AlertTriangle className="size-3.5" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs whitespace-pre-line">
+                                {conflict}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : null}
+                        </span>
                       </TableCell>
                       <TableCell className="text-[13px]">
                         {getSectionDayLabel(s.day)}
@@ -357,7 +402,8 @@ export function CourseSectionsDialog({
                         </TableCell>
                       ) : null}
                     </TableRow>
-                  ))}
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>

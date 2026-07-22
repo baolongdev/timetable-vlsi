@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
+  AlertTriangle,
   ArrowLeft,
   BookOpen,
   Building2,
@@ -65,10 +66,15 @@ import {
   getEffectiveAssignment,
   useDepartments,
 } from "@/lib/department-store"
+import {
+  findScheduleConflicts,
+  summarizeConflictsFor,
+} from "@/lib/schedule-conflicts"
 import { useLecturers } from "@/lib/lecturer-store"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types/course"
 import type { CourseSection } from "@/types/section"
+import type { Schedule } from "@/types/timetable"
 
 export function CoursesView() {
   const [search, setSearch] = React.useState("")
@@ -101,6 +107,44 @@ export function CoursesView() {
       weeksLabel: s.weeksLabel,
       language: s.language,
     }))
+  }, [dept])
+
+  // Trùng lịch toàn khoa (CB giảng dạy + phòng) — theo section
+  const { conflictByCode, conflictByKey } = React.useMemo(() => {
+    const byCode = new Map<string, { count: number; hint: string }>()
+    // key = `${code}-${group}` → mô tả trùng (cho dialog nhóm lớp)
+    const byKey = new Map<string, string>()
+    if (!dept) return { conflictByCode: byCode, conflictByKey: byKey }
+
+    // Section → Schedule để dùng lại findScheduleConflicts
+    // id giữ nguyên `${code}-${group}` để map ngược về nhóm
+    const schedules: Schedule[] = dept.sections.map((s) => {
+      const a = getEffectiveAssignment(dept, s)
+      return {
+        id: `${s.code}-${s.group}`,
+        courseCode: s.code,
+        courseName: s.courseName,
+        lecturer: a.teacher || "Chưa phân công",
+        teacher: a.teacher,
+        room: s.room,
+        day: s.day - 1,
+        startPeriod: s.startPeriod,
+        endPeriod: s.endPeriod,
+        className: s.group,
+        capacity: s.capacity,
+        weeks: s.weeksLabel,
+      }
+    })
+    const index = findScheduleConflicts(schedules)
+    for (const sch of schedules) {
+      if (!index.conflictIds.has(sch.id)) continue
+      byKey.set(sch.id, summarizeConflictsFor(sch.id, index))
+      const entry = byCode.get(sch.courseCode) ?? { count: 0, hint: "" }
+      entry.count += 1
+      if (!entry.hint) entry.hint = summarizeConflictsFor(sch.id, index)
+      byCode.set(sch.courseCode, entry)
+    }
+    return { conflictByCode: byCode, conflictByKey: byKey }
   }, [dept])
 
   const effectiveCourses = React.useMemo<Course[]>(() => {
@@ -138,6 +182,8 @@ export function CoursesView() {
 
   const [sectionsOpen, setSectionsOpen] = React.useState(false)
   const [viewing, setViewing] = React.useState<Course | null>(null)
+
+  const conflictCount = conflictByCode.size
 
   const [renameOpen, setRenameOpen] = React.useState(false)
   const [renaming, setRenaming] = React.useState<Course | null>(null)
@@ -211,6 +257,13 @@ export function CoursesView() {
                   <>Chưa có dữ liệu — upload file phân công</>
                 )}
               </p>
+              {conflictCount > 0 ? (
+                <p className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                  <AlertTriangle className="size-3.5 shrink-0" />
+                  {conflictCount} môn có nhóm bị trùng lịch (CB giảng dạy /
+                  phòng)
+                </p>
+              ) : null}
             </div>
           </div>
           <div
@@ -395,6 +448,7 @@ export function CoursesView() {
                   const sectionCount = effectiveSections.filter(
                     (s) => s.code === course.code
                   ).length
+                  const conflict = conflictByCode.get(course.code)
 
                   return (
                     <TableRow
@@ -420,6 +474,24 @@ export function CoursesView() {
                           <span className="font-medium tracking-tight">
                             {course.name}
                           </span>
+                          {conflict ? (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <span
+                                    className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-destructive/10 px-1 py-0.5 text-[10px] font-medium text-destructive"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                }
+                              >
+                                <AlertTriangle className="size-3" />
+                                {conflict.count}
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs whitespace-pre-line">
+                                {conflict.hint}
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : null}
                           {dept ? (
                             <Tooltip>
                               <TooltipTrigger
@@ -543,6 +615,7 @@ export function CoursesView() {
             ? (key, patch) => departmentStore.assign(dept.id, key, patch)
             : undefined
         }
+        getConflict={(s) => conflictByKey.get(`${s.code}-${s.group}`)}
       />
     </div>
   )
