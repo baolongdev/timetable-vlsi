@@ -2,6 +2,9 @@
 
 import * as React from "react"
 
+import { X, AlertTriangle } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -30,6 +33,10 @@ type LecturerPickerProps = {
   onValueChange: (value: string | null) => void
   placeholder?: string
   className?: string
+  /** Hiện nút X để xóa lựa chọn */
+  allowClear?: boolean
+  /** Tên GV bị vô hiệu hóa (trùng lịch) — không cho chọn */
+  disabledValues?: Set<string>
 }
 
 /**
@@ -42,6 +49,8 @@ export function LecturerPicker({
   onValueChange,
   placeholder = "Chọn giảng viên…",
   className,
+  allowClear = false,
+  disabledValues,
 }: LecturerPickerProps) {
   const { lecturers } = useLecturers()
 
@@ -66,60 +75,86 @@ export function LecturerPicker({
       ? value.trim()
       : EMPTY
 
+  const hasValue = selectValue !== EMPTY
+
   return (
-    <Select
-      value={selectValue}
-      onValueChange={(next) => {
-        if (!next || next === EMPTY) onValueChange(null)
-        else onValueChange(next)
-      }}
-      items={items}
-    >
-      <SelectTrigger
-        className={cn(
-          "h-8 w-full min-w-0 rounded-lg border-border/80 text-[13px] shadow-none",
-          className
-        )}
+    <div className="flex flex-col gap-1.5">
+      <Select
+        value={selectValue}
+        onValueChange={(next) => {
+          if (!next || next === EMPTY) onValueChange(null)
+          else onValueChange(next)
+        }}
+        items={items}
       >
-        {/* Render tường minh — tránh hiện raw value __empty__ */}
-        <SelectValue placeholder={placeholder}>
-          {(selected: string | null) => {
-            if (!selected || selected === EMPTY) return placeholder
-            return formatLecturerWithStaffId(selected, lecturers)
-          }}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent
-        alignItemWithTrigger={false}
-        className="min-w-(--anchor-width) max-w-96"
-      >
-        <SelectGroup>
-          <SelectItem value={EMPTY}>{placeholder}</SelectItem>
-        </SelectGroup>
-        {groups.map((group, index) => (
-          <SelectGroup key={group.role}>
-            {index > 0 ? <SelectSeparator /> : null}
-            <SelectLabel>{group.role}</SelectLabel>
-            {group.names.map((name) => {
-              const staffId = getStaffIdByName(name, lecturers)
-              return (
-                <SelectItem key={name} value={name}>
-                  {staffId ? (
-                    <span className="flex w-full items-center justify-between gap-3">
-                      <span>{name}</span>
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-                        MSCB {staffId}
-                      </span>
-                    </span>
-                  ) : (
-                    name
-                  )}
-                </SelectItem>
-              )
-            })}
+        <SelectTrigger className={cn("h-8 w-full min-w-0 rounded-lg border-border/80 text-[13px] shadow-none", className)}>
+          <SelectValue placeholder={placeholder}>
+            {(selected: string | null) => {
+              if (!selected || selected === EMPTY) return placeholder
+              return formatLecturerWithStaffId(selected, lecturers)
+            }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent
+          alignItemWithTrigger={false}
+          className="min-w-(--anchor-width) max-w-96"
+        >
+          <SelectGroup>
+            <SelectItem value={EMPTY}>{placeholder}</SelectItem>
           </SelectGroup>
-        ))}
-      </SelectContent>
-    </Select>
+          {groups.map((group, index) => (
+            <SelectGroup key={group.role}>
+              {index > 0 ? <SelectSeparator /> : null}
+              <SelectLabel>{group.role}</SelectLabel>
+              {group.names.map((name) => {
+                const staffId = getStaffIdByName(name, lecturers)
+                const isDisabled = disabledValues?.has(name) ?? false
+                return (
+                  <SelectItem
+                    key={name}
+                    value={name}
+                    disabled={isDisabled}
+                    title={isDisabled ? "Trùng lịch với nhóm đang xem" : undefined}
+                  >
+                    {staffId ? (
+                      <span className="flex w-full items-center justify-between gap-3">
+                        <span className="flex items-center gap-1.5">
+                          {name}
+                          {isDisabled ? (
+                            <AlertTriangle className="size-3 shrink-0 text-destructive" />
+                          ) : null}
+                        </span>
+                        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                          MSCB {staffId}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5">
+                        {name}
+                        {isDisabled ? (
+                          <AlertTriangle className="size-3 shrink-0 text-destructive" />
+                        ) : null}
+                      </span>
+                    )}
+                  </SelectItem>
+                )
+              })}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+      {allowClear && hasValue && (
+        <Button
+          type="button"
+          variant="destructive"
+          size="sm"
+          className="h-7 gap-1 rounded-lg text-[11px] font-medium"
+          onClick={() => onValueChange(null)}
+        >
+          <X className="size-3" />
+          Xóa phân công
+        </Button>
+      )}
+    </div>
   )
 }

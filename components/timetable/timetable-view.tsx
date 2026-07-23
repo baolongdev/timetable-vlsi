@@ -4,7 +4,7 @@ import * as React from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { Building2, FileSpreadsheet } from "lucide-react"
+import { Building2, FileSpreadsheet, AlertTriangle, DoorOpen, UserRound } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { ConflictDrawer } from "@/components/timetable/conflict-drawer"
@@ -19,9 +19,19 @@ import { TimetableHeader } from "@/components/timetable/timetable-header"
 import { TimetableMobile } from "@/components/timetable/timetable-mobile"
 import { TimetableToolbar } from "@/components/timetable/timetable-toolbar"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   detailConflictsFor,
   findScheduleConflicts,
   summarizeConflictsFor,
+  periodsOverlap,
+  parseWeeksToSet,
+  type ScheduleConflict,
 } from "@/lib/schedule-conflicts"
 
 // Dialog chỉ tải khi người dùng click card đầu tiên — giảm bundle ban đầu
@@ -57,11 +67,22 @@ const INITIAL_FILTERS: TimetableFilters = {
   room: "all",
 }
 
+function setsIntersectSimple(a: Set<number>, b: Set<number>): boolean {
+  if (a.size === 0 || b.size === 0) return false
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  for (const x of small) if (large.has(x)) return true
+  return false
+}
+
 export function TimetableView() {
   const [filters, setFilters] =
     React.useState<TimetableFilters>(INITIAL_FILTERS)
   const [selected, setSelected] = React.useState<Schedule | null>(null)
   const [dialogOpen, setDialogOpen] = React.useState(false)
+  const [conflictWarning, setConflictWarning] = React.useState<{
+    schedule: Schedule
+    conflicts: ScheduleConflict[]
+  } | null>(null)
   const [scrollState, setScrollState] =
     React.useState<TimetableScrollState>({
       canScrollLeft: false,
@@ -89,7 +110,6 @@ export function TimetableView() {
   const baseSchedules = React.useMemo<Schedule[]>(() => {
     if (!dept) return []
     return dept.sections
-      .filter((s) => s.endPeriod <= 12)
       .map((s, i) => {
         const a = getEffectiveAssignment(dept, s)
         const teacher = a.teacher
@@ -130,6 +150,12 @@ export function TimetableView() {
     return map
   }, [conflictIndex])
 
+  const scheduleById = React.useMemo(() => {
+    const map = new Map<string, Schedule>()
+    for (const s of baseSchedules) map.set(s.id, s)
+    return map
+  }, [baseSchedules])
+
   // Đồng bộ card đang mở với data mới (phân công) — không giữ snapshot cũ
   React.useEffect(() => {
     if (!selected) return
@@ -149,6 +175,21 @@ export function TimetableView() {
     return details.length > 0 ? details : undefined
   }, [selected, conflictIndex])
 
+  /** GV đang dạy cùng khung giờ với selected — vô hiệu hóa trong picker */
+  const conflictingLecturers = React.useMemo(() => {
+    if (!selected) return undefined
+    const set = new Set<string>()
+    const selectedWeeks = parseWeeksToSet(selected.weeks)
+    for (const s of baseSchedules) {
+      if (s.id === selected.id) continue
+      if (!periodsOverlap(selected, s)) continue
+      if (!setsIntersectSimple(selectedWeeks, parseWeeksToSet(s.weeks))) continue
+      const name = s.teacher?.trim() || s.lecturer?.trim()
+      if (name && name.toLowerCase() !== "chưa phân công") set.add(name)
+    }
+    return set.size > 0 ? set : undefined
+  }, [selected, baseSchedules])
+
   const lecturers = React.useMemo(
     () => getUniqueLecturers(baseSchedules),
     [baseSchedules]
@@ -163,6 +204,11 @@ export function TimetableView() {
   )
 
   const handleSelect = (schedule: Schedule) => {
+    const conflicts = conflictIndex.byScheduleId.get(schedule.id)
+    if (conflicts?.length) {
+      setConflictWarning({ schedule, conflicts })
+      return
+    }
     setSelected(schedule)
     setDialogOpen(true)
   }
@@ -375,12 +421,107 @@ export function TimetableView() {
         </main>
       </div>
 
+      <Dialog
+        open={!!conflictWarning}
+        onOpenChange={(open) => {
+          if (!open) setConflictWarning(null)
+        }}
+      >
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[520px]">
+          {conflictWarning ? (
+            <div className="flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-6">
+              <DialogHeader className="gap-2">
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="size-5 shrink-0" />
+                  Cảnh báo trùng lịch
+                </DialogTitle>
+                <DialogDescription>
+                  Nhóm{" "}
+                  <span className="font-mono font-medium text-foreground">
+                    {conflictWarning.schedule.className}
+                  </span>{" "}
+                  ({conflictWarning.schedule.courseCode} ·{" "}
+                  {conflictWarning.schedule.courseName}) bị trùng lịch.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="flex flex-col gap-2.5">
+                {conflictWarning.conflicts.map((c, i) => {
+                  const otherId =
+                    c.aId === conflictWarning.schedule.id ? c.bId : c.aId
+                  const other = scheduleById.get(otherId)
+                  const Icon =
+                    c.kind === "lecturer" ? UserRound : DoorOpen
+                  const kindLabel =
+                    c.kind === "lecturer"
+                      ? "Trùng giảng viên"
+                      : "Trùng phòng học"
+
+                  return (
+                    <div
+                      key={`${c.kind}-${c.resource}-${otherId}-${i}`}
+                      className="rounded-xl border border-destructive/20 bg-destructive/5 px-3.5 py-3"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-destructive/20 bg-background text-destructive">
+                          <Icon className="size-3.5" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-destructive">
+                            {kindLabel}: {c.resource}
+                          </p>
+                        </div>
+                      </div>
+                      {other ? (
+                        <div className="flex flex-col gap-1 text-xs leading-relaxed text-muted-foreground">
+                          <p>
+                            <span className="font-medium text-foreground">
+                              {conflictWarning.schedule.courseCode} · nhóm{" "}
+                              {conflictWarning.schedule.className}
+                            </span>{" "}
+                            trùng với{" "}
+                            <span className="font-medium text-foreground">
+                              {other.courseCode} · nhóm {other.className}
+                            </span>
+                          </p>
+                          <p>
+                            {other.courseName}
+                          </p>
+                          <p className="text-muted-foreground/70">
+                            {c.title}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          {c.title}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  className="rounded-xl"
+                  onClick={() => setConflictWarning(null)}
+                >
+                  Đóng
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       <TimetableDialog
         schedule={selected}
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         assignment={currentAssignment}
         conflictMessages={selectedConflictMessages}
+        conflictingLecturers={conflictingLecturers}
         onAssignmentChange={
           dept && selected
             ? (patch) => {

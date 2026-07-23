@@ -47,6 +47,54 @@ type TimetableGridProps = {
 /** Fixed width (px) of ONE lane — every card renders the same width */
 const LANE_WIDTH = 240
 
+/**
+ * Lazy-load wrapper: card chỉ render vào DOM khi scroll tới gần (±200px).
+ * Placeholder giữ vị trí CSS (absolute + top/height %) để layout không nhảy.
+ */
+function LazyCard({
+  style,
+  children,
+}: {
+  style: React.CSSProperties
+  children: React.ReactNode
+}) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = React.useState(false)
+
+  React.useEffect(() => {
+    const el = ref.current
+    if (!el || visible) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: "200px" }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [visible])
+
+  if (!visible) {
+    return (
+      <div
+        ref={ref}
+        style={style}
+        className="pointer-events-none absolute z-10"
+      >
+        <div className="flex h-full flex-col gap-2 rounded-2xl border border-border/40 bg-muted/20 p-3">
+          <div className="h-3.5 w-3/4 animate-pulse rounded-md bg-muted/50" />
+          <div className="h-3 w-1/2 animate-pulse rounded-md bg-muted/40" />
+          <div className="mt-auto h-3 w-2/3 animate-pulse rounded-md bg-muted/30" />
+        </div>
+      </div>
+    )
+  }
+  return <>{children}</>
+}
+
 export const TimetableGrid = React.forwardRef<
   TimetableGridHandle,
   TimetableGridProps
@@ -412,29 +460,30 @@ export const TimetableGrid = React.forwardRef<
               >
                 {positioned.map(({ schedule, lane }) => {
                   const span = schedule.endPeriod - schedule.startPeriod + 1
-                  const offset = periodOffsetStyle(
+                  const cardStyle = periodOffsetStyle(
                     schedule.startPeriod,
                     schedule.endPeriod,
                     periodCount
                   )
+                  const posStyle: React.CSSProperties = {
+                    ...cardStyle,
+                    left: lane * LANE_WIDTH + cardInsetX,
+                    width: LANE_WIDTH - cardInsetX * 2,
+                  }
 
                   return (
-                    <TimetableCard
-                      key={schedule.id}
-                      schedule={schedule}
-                      span={span}
-                      selected={selectedId === schedule.id}
-                      hasConflict={conflictIds?.has(schedule.id) ?? false}
-                      conflictHint={conflictHints?.get(schedule.id)}
-                      style={{
-                        ...offset,
-                        // Fixed-width lanes — mọi card đều rộng bằng nhau
-                        left: lane * LANE_WIDTH + cardInsetX,
-                        width: LANE_WIDTH - cardInsetX * 2,
-                      }}
-                      onClick={() => onSelect(schedule)}
-                      onPeriodHoverChange={setHighlightRange}
-                    />
+                    <LazyCard key={schedule.id} style={posStyle}>
+                      <TimetableCard
+                        schedule={schedule}
+                        span={span}
+                        selected={selectedId === schedule.id}
+                        hasConflict={conflictIds?.has(schedule.id) ?? false}
+                        conflictHint={conflictHints?.get(schedule.id)}
+                        style={posStyle}
+                        onClick={() => onSelect(schedule)}
+                        onPeriodHoverChange={setHighlightRange}
+                      />
+                    </LazyCard>
                   )
                 })}
               </TimetableCell>

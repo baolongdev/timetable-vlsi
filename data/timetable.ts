@@ -4,8 +4,8 @@ import type { Course } from "@/types/course"
 import type { CourseSection } from "@/types/section"
 import type { DayInfo, Period, Schedule } from "@/types/timetable"
 
-/** 12 periods × 1 hour, 06:00 → 18:00 */
-export const PERIODS: Period[] = Array.from({ length: 12 }, (_, i) => {
+/** 16 periods × 1 hour, 06:00 → 22:00 */
+export const PERIODS: Period[] = Array.from({ length: 16 }, (_, i) => {
   const h = i + 6
   const fmt = (v: number) => `${String(v).padStart(2, "0")}:00`
   return {
@@ -62,8 +62,6 @@ export function buildSchedules(
 ): Schedule[] {
   return (
     sectionData
-      // Grid hiển thị tới tiết 12 — nhóm cao học tiết 13+ xem ở trang Môn học
-      .filter((s) => s.endPeriod <= 12)
       .map((s, i) => {
         const baseName = s.courseName
           .replace(/\s*\((TN|Th|bài tập)\)?\s*$/i, "")

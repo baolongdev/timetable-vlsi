@@ -43,6 +43,8 @@ type TimetableDialogProps = {
   onAssignmentChange?: (patch: { teacher?: string }) => void
   /** Các dòng cảnh báo trùng lịch của nhóm này */
   conflictMessages?: string[]
+  /** Tên GV trùng lịch với nhóm này — vô hiệu hóa trong picker */
+  conflictingLecturers?: Set<string>
 }
 
 function Row({
@@ -78,6 +80,7 @@ export function TimetableDialog({
   assignment,
   onAssignmentChange,
   conflictMessages,
+  conflictingLecturers,
 }: TimetableDialogProps) {
   const { lecturers: roster } = useLecturers()
 
@@ -243,7 +246,9 @@ export function TimetableDialog({
                         })
                       }
                       placeholder="Chọn cán bộ giảng dạy…"
-                      className="h-10 rounded-xl"
+                      allowClear
+                      className="rounded-xl"
+                      disabledValues={conflictingLecturers}
                     />
                   </div>
                 </>
@@ -263,7 +268,8 @@ export function TimetableDialog({
                         if (value) onLecturerChange(schedule.id, value)
                       }}
                       placeholder="Chọn giảng viên…"
-                      className="h-10 rounded-xl"
+                      className="rounded-xl"
+                      disabledValues={conflictingLecturers}
                     />
                   ) : (
                     <p className="text-sm font-medium">

@@ -69,12 +69,21 @@ import {
 import {
   findScheduleConflicts,
   summarizeConflictsFor,
+  periodsOverlap,
+  parseWeeksToSet,
 } from "@/lib/schedule-conflicts"
 import { useLecturers } from "@/lib/lecturer-store"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types/course"
 import type { CourseSection } from "@/types/section"
 import type { Schedule } from "@/types/timetable"
+
+function setsIntersect(a: Set<number>, b: Set<number>): boolean {
+  if (a.size === 0 || b.size === 0) return false
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  for (const x of small) if (large.has(x)) return true
+  return false
+}
 
 export function CoursesView() {
   const [search, setSearch] = React.useState("")
@@ -145,6 +154,43 @@ export function CoursesView() {
       byCode.set(sch.courseCode, entry)
     }
     return { conflictByCode: byCode, conflictByKey: byKey }
+  }, [dept])
+
+  /** Tên GV trùng lịch theo từng nhóm — dùng vô hiệu hóa trong picker */
+  const conflictingLecturersByKey = React.useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    if (!dept) return map
+
+    const sections = dept.sections
+    const n = sections.length
+    for (let i = 0; i < n; i++) {
+      const a = sections[i]
+      const aKey = `${a.code}-${a.group}`
+      const aWeeks = parseWeeksToSet(a.weeksLabel)
+      const aSchedule = {
+        day: a.day - 1,
+        startPeriod: a.startPeriod,
+        endPeriod: a.endPeriod,
+      }
+
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue
+        const b = sections[j]
+        if (!periodsOverlap(aSchedule, { day: b.day - 1, startPeriod: b.startPeriod, endPeriod: b.endPeriod })) continue
+        if (!setsIntersect(aWeeks, parseWeeksToSet(b.weeksLabel))) continue
+
+        const bTeacher = getEffectiveAssignment(dept, b).teacher
+        if (!bTeacher || bTeacher.toLowerCase() === "chưa phân công") continue
+
+        let set = map.get(aKey)
+        if (!set) {
+          set = new Set()
+          map.set(aKey, set)
+        }
+        set.add(bTeacher)
+      }
+    }
+    return map
   }, [dept])
 
   const effectiveCourses = React.useMemo<Course[]>(() => {
@@ -616,6 +662,9 @@ export function CoursesView() {
             : undefined
         }
         getConflict={(s) => conflictByKey.get(`${s.code}-${s.group}`)}
+        getConflictingLecturers={(s) =>
+          conflictingLecturersByKey.get(`${s.code}-${s.group}`)
+        }
       />
     </div>
   )

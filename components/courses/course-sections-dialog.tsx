@@ -48,6 +48,8 @@ type CourseSectionsDialogProps = {
   onAssign?: (key: string, patch: Assignment) => void
   /** Mô tả trùng lịch của một nhóm (nếu có) — hiện cảnh báo trên hàng */
   getConflict?: (section: CourseSection) => string | undefined
+  /** Tên GV trùng lịch với nhóm này — vô hiệu hóa trong picker */
+  getConflictingLecturers?: (section: CourseSection) => Set<string> | undefined
 }
 
 type SortKey =
@@ -131,6 +133,7 @@ export function CourseSectionsDialog({
   getAssignment,
   onAssign,
   getConflict,
+  getConflictingLecturers,
 }: CourseSectionsDialogProps) {
   const [sorts, setSorts] = React.useState<SortState[]>([])
 
@@ -398,6 +401,7 @@ export function CourseSectionsDialog({
                               })
                             }
                             placeholder="Chọn CB giảng dạy…"
+                            disabledValues={getConflictingLecturers?.(s)}
                           />
                         </TableCell>
                       ) : null}
