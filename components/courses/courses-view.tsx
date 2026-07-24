@@ -596,7 +596,7 @@ export function CoursesView() {
                         {unassignedCount > 0 ? (
                           <Badge
                             variant="destructive"
-                            className="font-mono text-xs tabular-nums"
+                            className="h-5 rounded-4xl bg-destructive/10 px-2 font-mono text-xs tabular-nums text-destructive"
                           >
                             {unassignedCount}
                           </Badge>
