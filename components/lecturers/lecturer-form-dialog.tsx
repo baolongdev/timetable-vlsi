@@ -100,8 +100,9 @@ export function LecturerFormDialog({
   const validate = (): boolean => {
     const e: Record<string, string> = {}
     if (!form.name.trim()) e.name = "Vui lòng nhập họ tên giảng viên."
-    if (!form.departmentId) e.departmentId = "Vui lòng chọn bộ môn."
-    if (!form.staffId.trim()) e.staffId = "Vui lòng nhập MSCB."
+    if (!form.departmentId && form.guestDepartmentIds.length === 0)
+      e.departmentId =
+        "Chọn ít nhất một bộ môn (chính hoặc thỉnh giảng)."
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -122,10 +123,6 @@ export function LecturerFormDialog({
     })
     onOpenChange(false)
   }
-
-  const otherDepartments = departments.filter(
-    (d) => d.id !== form.departmentId
-  )
 
   const toggleGuestDept = (deptId: string) => {
     setForm((f) => ({
@@ -194,13 +191,13 @@ export function LecturerFormDialog({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
-                  <Label>
-                    Bộ môn <span className="text-destructive">*</span>
-                  </Label>
+                  <Label>Bộ môn chính</Label>
                   <Select
                     value={form.departmentId || "__empty__"}
                     onValueChange={(value) => {
-                      if (value && value !== "__empty__") {
+                      if (value === "__empty__") {
+                        setForm((f) => ({ ...f, departmentId: "" }))
+                      } else if (value) {
                         setForm((f) => ({
                           ...f,
                           departmentId: value,
@@ -210,10 +207,13 @@ export function LecturerFormDialog({
                         }))
                       }
                     }}
-                    items={departments.map((d) => ({
-                      label: d.name,
-                      value: d.id,
-                    }))}
+                    items={[
+                      { label: "Không có (thỉnh giảng)", value: "__empty__" },
+                      ...departments.map((d) => ({
+                        label: d.name,
+                        value: d.id,
+                      })),
+                    ]}
                   >
                     <SelectTrigger
                       className={cn(
@@ -225,6 +225,9 @@ export function LecturerFormDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
+                        <SelectItem value="__empty__">
+                          Không có (thỉnh giảng)
+                        </SelectItem>
                         {departments.map((d) => (
                           <SelectItem key={d.id} value={d.id}>
                             {d.name}
@@ -270,9 +273,7 @@ export function LecturerFormDialog({
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="lecturer-staffId">
-                    MSCB <span className="text-destructive">*</span>
-                  </Label>
+                  <Label htmlFor="lecturer-staffId">MSCB</Label>
                   <Input
                     id="lecturer-staffId"
                     value={form.staffId}
@@ -319,55 +320,63 @@ export function LecturerFormDialog({
                 />
               </div>
 
-              {form.departmentId && otherDepartments.length > 0 && (
+              {departments.length > 1 && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>Bộ môn thỉnh giảng</Label>
+                  <Label>
+                    {form.departmentId
+                      ? "Bộ môn thỉnh giảng"
+                      : "Bộ môn thỉnh giảng"}
+                  </Label>
                   <div className="flex flex-wrap gap-2">
-                    {otherDepartments.map((d) => {
-                      const checked = form.guestDepartmentIds.includes(d.id)
-                      return (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => toggleGuestDept(d.id)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
-                            checked
-                              ? "border-primary bg-primary/10 text-primary"
-                              : "border-border/60 bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground"
-                          )}
-                        >
-                          <span
+                    {departments
+                      .filter((d) => d.id !== form.departmentId)
+                      .map((d) => {
+                        const checked = form.guestDepartmentIds.includes(d.id)
+                        return (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => toggleGuestDept(d.id)}
                             className={cn(
-                              "flex size-3.5 shrink-0 items-center justify-center rounded-[4px] border",
+                              "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
                               checked
-                                ? "border-primary bg-primary text-primary-foreground"
-                                : "border-muted-foreground/30"
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border/60 bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground"
                             )}
                           >
-                            {checked && (
-                              <svg
-                                viewBox="0 0 12 12"
-                                fill="none"
-                                className="size-2.5"
-                              >
-                                <path
-                                  d="M10 3L4.5 8.5L2 6"
-                                  stroke="currentColor"
-                                  strokeWidth="1.5"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            )}
-                          </span>
-                          {d.name}
-                        </button>
-                      )
-                    })}
+                            <span
+                              className={cn(
+                                "flex size-3.5 shrink-0 items-center justify-center rounded-[4px] border",
+                                checked
+                                  ? "border-primary bg-primary text-primary-foreground"
+                                  : "border-muted-foreground/30"
+                              )}
+                            >
+                              {checked && (
+                                <svg
+                                  viewBox="0 0 12 12"
+                                  fill="none"
+                                  className="size-2.5"
+                                >
+                                  <path
+                                    d="M10 3L4.5 8.5L2 6"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              )}
+                            </span>
+                            {d.name}
+                          </button>
+                        )
+                      })}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Giảng viên có thể được phân công dạy các bộ môn bên dưới.
+                    {form.departmentId
+                      ? "Giảng viên có thể được phân công dạy các bộ môn bên dưới."
+                      : "Giảng viên thỉnh giảng — chọn bộ môn mà giảng viên sẽ dạy."}
                   </p>
                 </div>
               )}
