@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { DeptIndexRedirect } from "@/components/dept-index-redirect"
+import { CoursesOverview } from "@/components/courses/courses-overview"
 
 export const metadata: Metadata = {
   title: "Môn học",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 }
 
 export default function CoursesIndexPage() {
-  return <DeptIndexRedirect base="/courses" />
+  return <CoursesOverview />
 }
