@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 
 import { requestHasValidPolicyPassword } from "@/lib/dept-policy"
-import { departmentsCol, hasMongo, touchMeta } from "@/lib/mongo"
+import { departmentsCol, hasMongo, invalidateQueryCache, touchMeta } from "@/lib/mongo"
 
 export const dynamic = "force-dynamic"
 
@@ -26,6 +26,7 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
     const result = await col.deleteOne({ _id: id })
     const now = Date.now()
     await touchMeta({ departmentsAt: now })
+    invalidateQueryCache()
     return NextResponse.json({
       ok: true,
       deleted: result.deletedCount > 0,

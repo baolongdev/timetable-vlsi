@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import {
   hasMongo,
+  invalidateQueryCache,
   lecturerToDoc,
   lecturersCol,
   loadAllLecturers,
@@ -30,7 +31,12 @@ export async function GET() {
   }
   try {
     const lecturers = await loadAllLecturers()
-    return NextResponse.json({ lecturers })
+    const res = NextResponse.json({ lecturers })
+    res.headers.set(
+      "Cache-Control",
+      "private, max-age=10, stale-while-revalidate=60"
+    )
+    return res
   } catch (e) {
     console.error("[api/data/lecturers GET]", e)
     return NextResponse.json({ error: "mongo_error" }, { status: 502 })
@@ -73,6 +79,7 @@ export async function PUT(request: NextRequest) {
     }
 
     await touchMeta({ lecturersAt: now })
+    invalidateQueryCache()
     return NextResponse.json({ ok: true, updatedAt: now, count: list.length })
   } catch (e) {
     console.error("[api/data/lecturers PUT]", e)

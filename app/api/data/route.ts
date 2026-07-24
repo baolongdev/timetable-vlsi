@@ -24,7 +24,13 @@ export async function GET(request: NextRequest) {
     const updatedAt = await getServerUpdatedAt()
 
     if (since > 0 && updatedAt > 0 && updatedAt <= since) {
-      return new NextResponse(null, { status: 304 })
+      return new NextResponse(null, {
+        status: 304,
+        headers: {
+          "Cache-Control": "private, max-age=0, must-revalidate",
+          ETag: `"${updatedAt}"`,
+        },
+      })
     }
 
     const [departments, lecturers] = await Promise.all([
@@ -32,12 +38,18 @@ export async function GET(request: NextRequest) {
       loadAllLecturers(),
     ])
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       configured: true,
       departments,
       lecturers,
       updatedAt: updatedAt || Date.now(),
     })
+    res.headers.set(
+      "Cache-Control",
+      "private, max-age=5, stale-while-revalidate=30"
+    )
+    if (updatedAt) res.headers.set("ETag", `"${updatedAt}"`)
+    return res
   } catch (e) {
     console.error("[api/data GET]", e)
     return NextResponse.json(

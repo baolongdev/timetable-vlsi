@@ -5,6 +5,7 @@ import {
   departmentToDoc,
   departmentsCol,
   hasMongo,
+  invalidateQueryCache,
   loadAllDepartments,
   touchMeta,
 } from "@/lib/mongo"
@@ -65,6 +66,7 @@ export async function PUT(request: NextRequest) {
     }
 
     await touchMeta({ departmentsAt: now })
+    invalidateQueryCache()
     return NextResponse.json({
       ok: true,
       updatedAt: now,
@@ -101,6 +103,7 @@ export async function POST(request: NextRequest) {
       { upsert: true }
     )
     await touchMeta({ departmentsAt: now })
+    invalidateQueryCache()
     return NextResponse.json({ ok: true, updatedAt: now, id: dept.id })
   } catch (e) {
     console.error("[api/data/departments POST]", e)
@@ -115,7 +118,12 @@ export async function GET() {
   }
   try {
     const departments = await loadAllDepartments()
-    return NextResponse.json({ departments })
+    const res = NextResponse.json({ departments })
+    res.headers.set(
+      "Cache-Control",
+      "private, max-age=10, stale-while-revalidate=60"
+    )
+    return res
   } catch (e) {
     console.error("[api/data/departments GET]", e)
     return NextResponse.json({ error: "mongo_error" }, { status: 502 })

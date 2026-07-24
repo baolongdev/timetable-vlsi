@@ -3,6 +3,7 @@
  * Chỉ dùng phía server (Route Handlers / RSC).
  */
 import { MongoClient, type Db, type Collection } from "mongodb"
+import { unstable_cache, revalidateTag } from "next/cache"
 
 import type { Department } from "@/types/department"
 import type { Assignment, ImportedSection } from "@/types/import"
@@ -178,45 +179,92 @@ export async function getMeta(): Promise<SyncMetaDoc | null> {
 }
 
 export async function loadAllDepartments(): Promise<Department[]> {
-  const col = await departmentsCol()
-  const docs = await col.find({}).sort({ name: 1 }).toArray()
-  return docs.map(docToDepartment)
+  return getCached("departments-all", 8_000, async () => {
+    const col = await departmentsCol()
+    const docs = await col.find({}).sort({ name: 1 }).toArray()
+    return docs.map(docToDepartment)
+  })
 }
 
 export async function loadAllLecturers(): Promise<Lecturer[]> {
-  const col = await lecturersCol()
-  const docs = await col.find({}).toArray()
-  // Sort by numeric id when possible, else name
-  return docs
-    .map(docToLecturer)
-    .sort((a, b) => {
-      const na = Number(a.id)
-      const nb = Number(b.id)
-      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
-      return a.name.localeCompare(b.name, "vi")
-    })
+  return getCached("lecturers-all", 8_000, async () => {
+    const col = await lecturersCol()
+    const docs = await col.find({}).toArray()
+    return docs
+      .map(docToLecturer)
+      .sort((a, b) => {
+        const na = Number(a.id)
+        const nb = Number(b.id)
+        if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb
+        return a.name.localeCompare(b.name, "vi")
+      })
+  })
 }
 
 export async function getServerUpdatedAt(): Promise<number> {
-  const meta = await getMeta()
-  if (meta) {
-    return Math.max(meta.departmentsAt || 0, meta.lecturersAt || 0)
+  return getCached("server-updated-at", 3_000, async () => {
+    const meta = await getMeta()
+    if (meta) {
+      return Math.max(meta.departmentsAt || 0, meta.lecturersAt || 0)
+    }
+    const [depts, lecs] = await Promise.all([
+      departmentsCol().then((c) =>
+        c
+          .find({}, { projection: { updatedAt: 1 } })
+          .sort({ updatedAt: -1 })
+          .limit(1)
+          .toArray()
+      ),
+      lecturersCol().then((c) =>
+        c
+          .find({}, { projection: { updatedAt: 1 } })
+          .sort({ updatedAt: -1 })
+          .limit(1)
+          .toArray()
+      ),
+    ])
+    return Math.max(depts[0]?.updatedAt ?? 0, lecs[0]?.updatedAt ?? 0)
+  })
+}
+
+// ── In-memory cache (globalThis singleton) ──────────────────────────
+
+type CacheEntry<T> = { data: T; expiresAt: number }
+
+type CacheGlobal = {
+  __vlsiQueryCache?: Map<string, CacheEntry<unknown>>
+}
+
+function getCacheMap(): Map<string, CacheEntry<unknown>> {
+  const g = globalThis as unknown as CacheGlobal
+  if (!g.__vlsiQueryCache) g.__vlsiQueryCache = new Map()
+  return g.__vlsiQueryCache
+}
+
+async function getCached<T>(
+  key: string,
+  ttlMs: number,
+  fetcher: () => Promise<T>
+): Promise<T> {
+  const map = getCacheMap()
+  const now = Date.now()
+  const hit = map.get(key)
+  if (hit && hit.expiresAt > now) return hit.data as T
+  const data = await fetcher()
+  map.set(key, { data, expiresAt: now + ttlMs })
+  return data
+}
+
+/**
+ * Xoá cache sau khi mutate — gọi từ route handler.
+ * Tự invalidate in-memory cache + revalidateTag Next.js.
+ */
+export function invalidateQueryCache() {
+  getCacheMap().clear()
+  try {
+    revalidateTag("departments", "seconds")
+    revalidateTag("lecturers", "seconds")
+  } catch {
+    // revalidateTag chỉ chạy được trong Server Action / Route Handler
   }
-  const [depts, lecs] = await Promise.all([
-    departmentsCol().then((c) =>
-      c
-        .find({}, { projection: { updatedAt: 1 } })
-        .sort({ updatedAt: -1 })
-        .limit(1)
-        .toArray()
-    ),
-    lecturersCol().then((c) =>
-      c
-        .find({}, { projection: { updatedAt: 1 } })
-        .sort({ updatedAt: -1 })
-        .limit(1)
-        .toArray()
-    ),
-  ])
-  return Math.max(depts[0]?.updatedAt ?? 0, lecs[0]?.updatedAt ?? 0)
 }

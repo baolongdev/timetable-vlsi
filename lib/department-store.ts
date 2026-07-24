@@ -427,7 +427,9 @@ export const departmentStore = {
   },
 }
 
-const POLL_MS = 30_000
+const POLL_BASE = 30_000
+const POLL_MAX = 120_000
+const POLL_BACKOFF_FACTOR = 1.5
 
 /** Hook đọc danh sách khoa + version (để force recompute conflict realtime) */
 export function useDepartments() {
@@ -442,18 +444,54 @@ export function useDepartments() {
     setHydrated(true)
     void pullDepartmentsFromRemote()
 
+    const store = getG()
+    let currentInterval = POLL_BASE
+    let consecutiveNoChange = 0
+
     const onFocus = () => {
+      currentInterval = POLL_BASE
+      consecutiveNoChange = 0
+      setupPoll()
       void pullDepartmentsFromRemote()
     }
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        currentInterval = POLL_BASE
+        consecutiveNoChange = 0
+        setupPoll()
+      }
+    }
+
+    function setupPoll() {
+      if (store.pollTimer != null) window.clearInterval(store.pollTimer)
+      store.pollTimer = window.setInterval(async () => {
+        const prev = getG().state.updatedAt
+        const ok = await pullDepartmentsFromRemote()
+        if (ok) {
+          const next = getG().state.updatedAt
+          if (next === prev) {
+            consecutiveNoChange++
+            currentInterval = Math.min(
+              currentInterval * POLL_BACKOFF_FACTOR,
+              POLL_MAX
+            )
+          } else {
+            consecutiveNoChange = 0
+            currentInterval = POLL_BASE
+          }
+          setupPoll()
+        }
+      }, currentInterval)
+    }
+
     window.addEventListener("focus", onFocus)
-    const store = getG()
-    if (store.pollTimer != null) window.clearInterval(store.pollTimer)
-    store.pollTimer = window.setInterval(() => {
-      void pullDepartmentsFromRemote()
-    }, POLL_MS)
+    document.addEventListener("visibilitychange", onVisibility)
+    setupPoll()
 
     return () => {
       window.removeEventListener("focus", onFocus)
+      document.removeEventListener("visibilitychange", onVisibility)
       if (store.pollTimer != null) {
         window.clearInterval(store.pollTimer)
         store.pollTimer = null

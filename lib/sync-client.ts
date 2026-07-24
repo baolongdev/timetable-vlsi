@@ -29,7 +29,7 @@ async function parseJson<T>(res: Response): Promise<T | null> {
 /** Trạng thái nhanh — configured + updatedAt */
 export async function fetchSyncStatus(): Promise<SyncStatus | null> {
   try {
-    const res = await fetch("/api/data/status", { cache: "no-store" })
+    const res = await fetch("/api/data/status")
     if (!res.ok) return null
     return parseJson<SyncStatus>(res)
   } catch {
@@ -52,7 +52,7 @@ export async function fetchSyncSnapshot(
   try {
     const qs =
       since != null && since > 0 ? `?since=${encodeURIComponent(String(since))}` : ""
-    const res = await fetch(`/api/data${qs}`, { cache: "no-store" })
+    const res = await fetch(`/api/data${qs}`)
     if (res.status === 304) {
       return { ok: true, notModified: true, updatedAt: since ?? 0 }
     }

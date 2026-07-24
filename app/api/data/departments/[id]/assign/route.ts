@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-import { departmentsCol, hasMongo, touchMeta } from "@/lib/mongo"
+import { departmentsCol, hasMongo, invalidateQueryCache, touchMeta } from "@/lib/mongo"
 import type { Assignment } from "@/types/import"
 
 export const dynamic = "force-dynamic"
@@ -38,6 +38,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
       return NextResponse.json({ error: "not_found" }, { status: 404 })
     }
     await touchMeta({ departmentsAt: now })
+    invalidateQueryCache()
     return NextResponse.json({ ok: true, updatedAt: now })
   } catch (e) {
     console.error("[api/data/departments/id/assign PATCH]", e)
