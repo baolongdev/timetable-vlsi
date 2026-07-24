@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { XIcon } from "lucide-react"
 import { useDepartments } from "@/lib/department-store"
 import { getInitials, getPersonColor } from "@/lib/person-color"
 import { cn } from "@/lib/utils"
@@ -286,50 +287,63 @@ export function LecturerFormDialog({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label>Bộ môn chính</Label>
-                  <Select
-                    value={form.departmentId || "__empty__"}
-                    onValueChange={(value) => {
-                      if (value === "__empty__") {
-                        setForm((f) => ({ ...f, departmentId: "" }))
-                      } else if (value) {
-                        setForm((f) => ({
-                          ...f,
-                          departmentId: value,
-                          guestDepartmentIds: f.guestDepartmentIds.filter(
-                            (id) => id !== value
-                          ),
-                        }))
-                      }
-                    }}
-                    items={[
-                      { label: "Chỉ thỉnh giảng", value: "__empty__" },
-                      ...departments.map((d) => ({
-                        label: d.name,
-                        value: d.id,
-                      })),
-                    ]}
-                  >
-                    <SelectTrigger
-                      className={cn(
-                        "h-10 w-full rounded-xl",
-                        errors.departmentId && "border-destructive"
-                      )}
+                  <div className="relative">
+                    <Select
+                      value={form.departmentId || "__empty__"}
+                      onValueChange={(value) => {
+                        if (value === "__empty__") {
+                          setForm((f) => ({ ...f, departmentId: "" }))
+                        } else if (value) {
+                          setForm((f) => ({
+                            ...f,
+                            departmentId: value,
+                            guestDepartmentIds: f.guestDepartmentIds.filter(
+                              (id) => id !== value
+                            ),
+                          }))
+                        }
+                      }}
+                      items={[
+                        { label: "Thỉnh giảng", value: "__empty__" },
+                        ...departments.map((d) => ({
+                          label: d.name,
+                          value: d.id,
+                        })),
+                      ]}
                     >
-                      <SelectValue placeholder="Chọn bộ môn…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="__empty__">
-                          Không có (thỉnh giảng)
-                        </SelectItem>
-                        {departments.map((d) => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.name}
+                      <SelectTrigger
+                        className={cn(
+                          "h-10 w-full rounded-xl pr-8",
+                          errors.departmentId && "border-destructive"
+                        )}
+                      >
+                        <SelectValue placeholder="Chọn bộ môn…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value="__empty__">
+                            Thỉnh giảng
                           </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                          {departments.map((d) => (
+                            <SelectItem key={d.id} value={d.id}>
+                              {d.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {form.departmentId && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({ ...f, departmentId: "" }))
+                        }
+                        className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-0.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <XIcon className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
                   {errors.departmentId && (
                     <p className="text-xs text-destructive">
                       {errors.departmentId}
@@ -339,29 +353,42 @@ export function LecturerFormDialog({
 
                 <div className="flex flex-col gap-1.5">
                   <Label>Chức vụ / vai trò</Label>
-                  <Select
-                    value={form.role}
-                    onValueChange={(value) => {
-                      if (value)
-                        setForm((f) => ({
-                          ...f,
-                          role: value as LecturerRole,
-                        }))
-                    }}
-                  >
-                    <SelectTrigger className="h-10 w-full rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {LECTURER_ROLES.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {role}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
+                  <div className="relative">
+                    <Select
+                      value={form.role}
+                      onValueChange={(value) => {
+                        if (value)
+                          setForm((f) => ({
+                            ...f,
+                            role: value as LecturerRole,
+                          }))
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-full rounded-xl pr-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {LECTURER_ROLES.map((role) => (
+                            <SelectItem key={role} value={role}>
+                              {role}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    {form.role && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm((f) => ({ ...f, role: "Giảng viên" }))
+                        }
+                        className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-0.5 text-muted-foreground hover:text-foreground"
+                      >
+                        <XIcon className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
