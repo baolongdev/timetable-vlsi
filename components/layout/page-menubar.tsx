@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import {
+  ArrowRightLeft,
   BookOpen,
   Building2,
   Download,
@@ -39,6 +40,8 @@ type PageMenubarProps = {
   deptRoute?: string
   /** Show "Chưa phân khoa" link in Bộ môn menu (lecturers only) */
   unassignedCount?: number
+  /** Show "Chỉ thỉnh giảng" link in Bộ môn menu (lecturers only) */
+  guestOnlyCount?: number
   /** Show export menu */
   exportMenu?: {
     onExport: () => void
@@ -79,6 +82,7 @@ export function PageMenubar({
   currentDeptId,
   deptRoute,
   unassignedCount,
+  guestOnlyCount,
   exportMenu,
   conflictSlot,
   actionSlot,
@@ -114,6 +118,19 @@ export function PageMenubar({
                   Chưa phân khoa
                   <span className="ml-auto text-xs text-muted-foreground">
                     {unassignedCount}
+                  </span>
+                </MenubarItem>
+              ) : null}
+              {guestOnlyCount ? (
+                <MenubarItem
+                  className="gap-2"
+                  render={<Link href="/lecturers/guest-only" />}
+                >
+                  {currentDeptId === "guest-only" ? "✓ " : null}
+                  <ArrowRightLeft className="size-4" />
+                  Chỉ thỉnh giảng
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {guestOnlyCount}
                   </span>
                 </MenubarItem>
               ) : null}

@@ -67,30 +67,42 @@ export function LecturersView() {
   const params = useParams<{ dept?: string }>()
   const deptParam = params.dept ?? null
   const isUnassigned = deptParam === "unassigned"
+  const isGuestOnly = deptParam === "guest-only"
 
   const dept = React.useMemo(
     () =>
-      isUnassigned
+      isUnassigned || isGuestOnly
         ? null
         : departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
-    [departments, deptParam, isUnassigned]
+    [departments, deptParam, isUnassigned, isGuestOnly]
   )
 
   const deptLecturers = React.useMemo(() => {
     if (isUnassigned) return lecturers.filter((l) => !l.departmentId)
+    if (isGuestOnly)
+      return lecturers.filter(
+        (l) =>
+          !l.departmentId &&
+          l.guestDepartmentIds &&
+          l.guestDepartmentIds.length > 0
+      )
     if (!dept) return lecturers
     return lecturers.filter((l) => l.departmentId === dept.id)
-  }, [lecturers, dept, isUnassigned])
+  }, [lecturers, dept, isUnassigned, isGuestOnly])
 
-  const pageTitle = isUnassigned
-    ? "Chưa phân bộ môn"
-    : dept
-      ? `Giảng viên — ${dept.name}`
-      : "Giảng viên"
+  const pageTitle = isGuestOnly
+    ? "Chỉ thỉnh giảng"
+    : isUnassigned
+      ? "Chưa phân bộ môn"
+      : dept
+        ? `Giảng viên — ${dept.name}`
+        : "Giảng viên"
 
-  const pageSubtitle = isUnassigned
-    ? `${deptLecturers.length} giảng viên chưa chọn khoa`
-    : `${deptLecturers.length} giảng viên${dept ? ` · ${dept.name}` : ""}`
+  const pageSubtitle = isGuestOnly
+    ? `${deptLecturers.length} giảng viên thỉnh giảng, không thuộc bộ môn nào`
+    : isUnassigned
+      ? `${deptLecturers.length} giảng viên chưa chọn khoa`
+      : `${deptLecturers.length} giảng viên${dept ? ` · ${dept.name}` : ""}`
 
   const [search, setSearch] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
@@ -151,9 +163,11 @@ export function LecturersView() {
                 { label: "Giảng viên", href: "/lecturers" },
                 ...(dept
                   ? [{ label: dept.name }]
-                  : isUnassigned
-                    ? [{ label: "Chưa phân khoa" }]
-                    : []),
+                  : isGuestOnly
+                    ? [{ label: "Chỉ thỉnh giảng" }]
+                    : isUnassigned
+                      ? [{ label: "Chưa phân khoa" }]
+                      : []),
               ]}
             />
             <div className="flex min-w-0 flex-col gap-1">
@@ -168,10 +182,20 @@ export function LecturersView() {
           <PageMenubar
             activePage="lecturers"
             departments={departments}
-            currentDeptId={dept?.id}
+            currentDeptId={isGuestOnly ? "guest-only" : isUnassigned ? "unassigned" : dept?.id}
             unassignedCount={
               isUnassigned
                 ? lecturers.filter((l) => !l.departmentId).length
+                : undefined
+            }
+            guestOnlyCount={
+              isGuestOnly
+                ? lecturers.filter(
+                    (l) =>
+                      !l.departmentId &&
+                      l.guestDepartmentIds &&
+                      l.guestDepartmentIds.length > 0
+                  ).length
                 : undefined
             }
             actionSlot={

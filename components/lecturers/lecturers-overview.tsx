@@ -3,15 +3,15 @@
 import * as React from "react"
 import Link from "next/link"
 import {
-  ArrowLeft,
+  ArrowRightLeft,
   Building2,
-  BookOpen,
   Users,
 } from "lucide-react"
 
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { PageMenubar } from "@/components/layout/page-menubar"
 import { pagePad } from "@/components/timetable/layout"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useDepartments } from "@/lib/department-store"
 import { useLecturers } from "@/lib/lecturer-store"
@@ -24,6 +24,9 @@ export function LecturersOverview() {
   const stats = React.useMemo(() => {
     return departments.map((d) => {
       const deptLecturers = lecturers.filter((l) => l.departmentId === d.id)
+      const guestLecturers = lecturers.filter(
+        (l) => l.departmentId !== d.id && l.guestDepartmentIds?.includes(d.id)
+      )
       const assignedCount = deptLecturers.filter((l) => l.staffId).length
       return {
         id: d.id,
@@ -31,11 +34,18 @@ export function LecturersOverview() {
         total: deptLecturers.length,
         assigned: assignedCount,
         sections: d.sections.length,
+        guestCount: guestLecturers.length,
       }
     })
   }, [departments, lecturers])
 
-  const unassignedCount = lecturers.filter((l) => !l.departmentId).length
+  const unassignedCount = lecturers.filter(
+    (l) => !l.departmentId && (!l.guestDepartmentIds || l.guestDepartmentIds.length === 0)
+  ).length
+
+  const guestOnlyCount = lecturers.filter(
+    (l) => !l.departmentId && l.guestDepartmentIds && l.guestDepartmentIds.length > 0
+  ).length
 
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
@@ -52,7 +62,7 @@ export function LecturersOverview() {
                 {hydrated ? (
                   <>
                     {lecturers.length} giảng viên · {departments.length} bộ
-                    môn
+                    môn · {guestOnlyCount} thỉnh giảng
                   </>
                 ) : (
                   <span>Đang tải&hellip;</span>
@@ -97,34 +107,67 @@ export function LecturersOverview() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-1.5 text-sm">
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <Users className="size-3.5" />
-                    <span className="font-medium text-foreground">
-                      {s.total}
-                    </span>{" "}
-                    giảng viên
+                    <span className="font-medium text-foreground">{s.total}</span> thành viên
                   </span>
                   {s.assigned > 0 ? (
-                    <span className="text-muted-foreground">
+                    <Badge variant="secondary" className="font-mono text-[11px] tabular-nums">
                       {s.assigned} MSCB
-                    </span>
+                    </Badge>
+                  ) : null}
+                  {s.guestCount > 0 ? (
+                    <Badge variant="outline" className="gap-1 font-mono text-[11px] tabular-nums text-amber-600">
+                      <ArrowRightLeft className="size-2.5" />
+                      {s.guestCount} thỉnh giảng
+                    </Badge>
                   ) : null}
                 </div>
               </Link>
             ))}
 
-            {unassignedCount > 0 ? (
+            {/* Guest-only lecturers card */}
+            {guestOnlyCount > 0 ? (
               <Link
                 href="/lecturers/unassigned"
-                className="group flex flex-col gap-3 rounded-xl border border-dashed border-border/50 p-5 transition-colors hover:border-amber-300 hover:bg-amber-50/50 dark:hover:border-amber-700 dark:hover:bg-amber-950/30"
+                className="group flex flex-col gap-3 rounded-xl border border-dashed border-amber-300/60 p-5 transition-colors hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/40 dark:hover:border-amber-600 dark:hover:bg-amber-950/30"
               >
                 <div className="flex items-center gap-3">
                   <span className="flex size-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
-                    <Users className="size-4.5 text-amber-600 dark:text-amber-400" />
+                    <ArrowRightLeft className="size-4.5 text-amber-600 dark:text-amber-400" />
                   </span>
                   <div className="min-w-0 flex-1">
                     <h2 className="truncate font-medium tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400">
+                      Chỉ thỉnh giảng
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      Giảng viên thỉnh giảng, không thuộc bộ môn nào
+                    </p>
+                  </div>
+                </div>
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Users className="size-3.5" />
+                  <span className="font-medium text-foreground">
+                    {guestOnlyCount}
+                  </span>{" "}
+                  giảng viên
+                </span>
+              </Link>
+            ) : null}
+
+            {/* Unassigned lecturers card */}
+            {unassignedCount > 0 ? (
+              <Link
+                href="/lecturers/unassigned"
+                className="group flex flex-col gap-3 rounded-xl border border-dashed border-border/50 p-5 transition-colors hover:border-orange-300 hover:bg-orange-50/50 dark:hover:border-orange-700 dark:hover:bg-orange-950/30"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-orange-100 dark:bg-orange-900/40">
+                    <Users className="size-4.5 text-orange-600 dark:text-orange-400" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate font-medium tracking-tight group-hover:text-orange-600 dark:group-hover:text-orange-400">
                       Chưa phân bộ môn
                     </h2>
                     <p className="text-xs text-muted-foreground">
