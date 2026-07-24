@@ -6,21 +6,17 @@ import { useParams } from "next/navigation"
 import {
   ArrowLeft,
   ArrowRightLeft,
-  Building2,
   Pencil,
   Plus,
   Search,
   Trash2,
   UserRound,
-  Users,
 } from "lucide-react"
 
 import { LecturerDeleteDialog } from "@/components/lecturers/lecturer-delete-dialog"
 import { LecturerFormDialog } from "@/components/lecturers/lecturer-form-dialog"
-import { TourHelpButton } from "@/components/onboarding-tour"
-import { PresenceHeaderControl } from "@/components/presence-widget"
+import { PageMenubar } from "@/components/layout/page-menubar"
 import { pagePad } from "@/components/timetable/layout"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -168,72 +164,26 @@ export function LecturersView() {
               </p>
             </div>
           </div>
-          <div
-            data-tour="lecturers-dept-switch"
-            className="scrollbar-minimal -mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 sm:gap-2"
-          >
-            {departments.length > 1
-              ? departments.map((d) => (
-                  <Button
-                    key={d.id}
-                    variant={d.id === dept?.id ? "secondary" : "ghost"}
-                    size="sm"
-                    className="shrink-0 rounded-lg"
-                    render={<Link href={`/lecturers/${d.id}`} />}
-                    nativeButton={false}
-                  >
-                    {d.name}
-                  </Button>
-                ))
-              : null}
-            {isUnassigned ? (
+          <PageMenubar
+            activePage="lecturers"
+            departments={departments}
+            currentDeptId={dept?.id}
+            unassignedCount={
+              isUnassigned
+                ? lecturers.filter((l) => !l.departmentId).length
+                : undefined
+            }
+            actionSlot={
               <Button
-                variant="secondary"
-                size="sm"
-                className="shrink-0 rounded-lg"
-                render={<Link href="/lecturers/unassigned" />}
-                nativeButton={false}
+                data-tour="lecturers-add"
+                className="ml-1 shrink-0 rounded-xl"
+                onClick={openCreate}
               >
-                Chưa phân khoa
+                <Plus data-icon="inline-start" />
+                Thêm giảng viên
               </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
-              render={<Link href="/departments" />}
-              nativeButton={false}
-            >
-              <Building2 data-icon="inline-start" />
-              Khoa
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-tour="lecturers-nav-courses"
-              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
-              render={<Link href="/courses" />}
-              nativeButton={false}
-            >
-              <Users data-icon="inline-start" />
-              Môn học
-            </Button>
-            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
-            <TourHelpButton className="shrink-0" />
-            <PresenceHeaderControl className="shrink-0" />
-            <span data-tour="theme-toggle" className="inline-flex shrink-0">
-              <ThemeToggle className="shrink-0" />
-            </span>
-            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
-            <Button
-              data-tour="lecturers-add"
-              className="shrink-0 rounded-xl"
-              onClick={openCreate}
-            >
-              <Plus data-icon="inline-start" />
-              Thêm giảng viên
-            </Button>
-          </div>
+            }
+          />
         </header>
 
         {/* Toolbar */}

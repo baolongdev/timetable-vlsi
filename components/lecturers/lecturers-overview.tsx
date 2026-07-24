@@ -9,10 +9,8 @@ import {
   Users,
 } from "lucide-react"
 
-import { TourHelpButton } from "@/components/onboarding-tour"
-import { PresenceHeaderControl } from "@/components/presence-widget"
+import { PageMenubar } from "@/components/layout/page-menubar"
 import { pagePad } from "@/components/timetable/layout"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { useDepartments } from "@/lib/department-store"
 import { useLecturers } from "@/lib/lecturer-store"
@@ -70,24 +68,10 @@ export function LecturersOverview() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="transition-opacity duration-150 hover:opacity-80"
-              render={<Link href="/courses" />}
-              nativeButton={false}
-            >
-              <BookOpen data-icon="inline-start" />
-              Môn học
-            </Button>
-            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
-            <TourHelpButton />
-            <PresenceHeaderControl />
-            <span data-tour="theme-toggle" className="inline-flex">
-              <ThemeToggle />
-            </span>
-          </div>
+          <PageMenubar
+            activePage="lecturers"
+            departments={departments}
+          />
         </header>
 
         {/* Department cards */}

@@ -8,17 +8,14 @@ import {
   AlertTriangle,
   ArrowLeft,
   BookOpen,
-  Building2,
   CalendarDays,
   Pencil,
   Search,
-  Users,
 } from "lucide-react"
 
 import { CourseRenameDialog } from "@/components/courses/course-rename-dialog"
+import { PageMenubar } from "@/components/layout/page-menubar"
 import { LecturerChip } from "@/components/lecturer-chip"
-import { TourHelpButton } from "@/components/onboarding-tour"
-import { PresenceHeaderControl } from "@/components/presence-widget"
 
 // Dialog nặng (bảng nhóm lớp + combobox phân công) — tải khi mở lần đầu
 const CourseSectionsDialog = dynamic(
@@ -28,7 +25,6 @@ const CourseSectionsDialog = dynamic(
     ),
   { ssr: false }
 )
-import { ThemeToggle } from "@/components/theme-toggle"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -338,53 +334,11 @@ export function CoursesView() {
               ) : null}
             </div>
           </div>
-          <div
-            data-tour="courses-dept-switch"
-            className="scrollbar-minimal -mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 sm:gap-2"
-          >
-            {departments.length > 1
-              ? departments.map((d) => (
-                  <Button
-                    key={d.id}
-                    variant={d.id === dept?.id ? "secondary" : "ghost"}
-                    size="sm"
-                    className="shrink-0 rounded-lg"
-                    render={<Link href={`/courses/${d.id}`} />}
-                    nativeButton={false}
-                  >
-                    {d.name}
-                  </Button>
-                ))
-              : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
-              render={<Link href="/departments" />}
-              nativeButton={false}
-            >
-              <Building2 data-icon="inline-start" />
-              Khoa
-            </Button>
-            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
-            <Button
-              variant="ghost"
-              size="sm"
-              data-tour="courses-nav-lecturers"
-              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
-              render={<Link href="/lecturers" />}
-              nativeButton={false}
-            >
-              <Users data-icon="inline-start" />
-              Giảng viên
-            </Button>
-            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
-            <TourHelpButton className="shrink-0" />
-            <PresenceHeaderControl className="shrink-0" />
-            <span data-tour="theme-toggle" className="inline-flex shrink-0">
-              <ThemeToggle className="shrink-0" />
-            </span>
-          </div>
+          <PageMenubar
+            activePage="courses"
+            departments={departments}
+            currentDeptId={dept?.id}
+          />
         </header>
 
         {/* Toolbar */}
