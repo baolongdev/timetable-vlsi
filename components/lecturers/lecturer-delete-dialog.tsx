@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { useDepartments } from "@/lib/department-store"
 import type { Lecturer } from "@/types/lecturer"
 
 type LecturerDeleteDialogProps = {
@@ -25,6 +26,11 @@ export function LecturerDeleteDialog({
   lecturer,
   onConfirm,
 }: LecturerDeleteDialogProps) {
+  const { departments } = useDepartments()
+  const deptName = lecturer?.departmentId
+    ? departments.find((d) => d.id === lecturer.departmentId)?.name
+    : undefined
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="rounded-xl sm:max-w-md">
@@ -37,8 +43,9 @@ export function LecturerDeleteDialog({
                 <span className="font-medium text-foreground">
                   {lecturer.name}
                 </span>{" "}
-                ({lecturer.role}). Hành động này không thể hoàn tác trên phiên
-                làm việc hiện tại.
+                ({lecturer.role}
+                {deptName ? `, ${deptName}` : ""}). Hành động này không thể
+                hoàn tác trên phiên làm việc hiện tại.
               </>
             ) : (
               "Hành động này không thể hoàn tác."

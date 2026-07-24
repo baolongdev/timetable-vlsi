@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { useDepartments } from "@/lib/department-store"
 import { getInitials, getPersonColor } from "@/lib/person-color"
 import { cn } from "@/lib/utils"
 import {
@@ -34,23 +35,31 @@ type LecturerFormDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   lecturer: Lecturer | null
+  /** Khoa mặc định khi thêm mới (từ URL dept param) */
+  defaultDepartmentId?: string
   onSubmit: (data: Omit<Lecturer, "id"> & { id?: string }) => void
 }
 
 type FormState = {
   name: string
   role: LecturerRole
+  departmentId: string
+  staffId: string
   email: string
   phone: string
   note: string
 }
 
-const emptyForm: FormState = {
-  name: "",
-  role: "Giảng viên",
-  email: "",
-  phone: "",
-  note: "",
+function buildEmptyForm(defaultDepartmentId?: string): FormState {
+  return {
+    name: "",
+    role: "Giảng viên",
+    departmentId: defaultDepartmentId ?? "",
+    staffId: "",
+    email: "",
+    phone: "",
+    note: "",
+  }
 }
 
 function OptionalTag() {
@@ -65,10 +74,14 @@ export function LecturerFormDialog({
   open,
   onOpenChange,
   lecturer,
+  defaultDepartmentId,
   onSubmit,
 }: LecturerFormDialogProps) {
   const isEdit = Boolean(lecturer)
-  const [form, setForm] = React.useState<FormState>(emptyForm)
+  const { departments } = useDepartments()
+  const [form, setForm] = React.useState<FormState>(() =>
+    buildEmptyForm(defaultDepartmentId)
+  )
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
@@ -77,15 +90,17 @@ export function LecturerFormDialog({
       setForm({
         name: lecturer.name,
         role: lecturer.role,
+        departmentId: lecturer.departmentId ?? "",
+        staffId: lecturer.staffId ?? "",
         email: lecturer.email ?? "",
         phone: lecturer.phone ?? "",
         note: lecturer.note ?? "",
       })
     } else {
-      setForm(emptyForm)
+      setForm(buildEmptyForm(defaultDepartmentId))
     }
     setError(null)
-  }, [open, lecturer])
+  }, [open, lecturer, defaultDepartmentId])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,6 +113,8 @@ export function LecturerFormDialog({
       id: lecturer?.id,
       name,
       role: form.role,
+      departmentId: form.departmentId || undefined,
+      staffId: form.staffId.trim() || undefined,
       email: form.email.trim() || undefined,
       phone: form.phone.trim() || undefined,
       note: form.note.trim() || undefined,
@@ -153,34 +170,77 @@ export function LecturerFormDialog({
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <Label>Chức vụ / vai trò</Label>
-                <Select
-                  value={form.role}
-                  onValueChange={(value) => {
-                    if (value)
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label>Bộ môn / khoa</Label>
+                  <Select
+                    value={form.departmentId || "__none__"}
+                    onValueChange={(value) =>
                       setForm((f) => ({
                         ...f,
-                        role: value as LecturerRole,
+                        departmentId: !value || value === "__none__" ? "" : value,
                       }))
-                  }}
-                >
-                  <SelectTrigger className="h-10 w-full rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {LECTURER_ROLES.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl">
+                      <SelectValue placeholder="Chọn khoa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem value="__none__">— Chưa chọn —</SelectItem>
+                        {departments.map((d) => (
+                          <SelectItem key={d.id} value={d.id}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <Label>Chức vụ / vai trò</Label>
+                  <Select
+                    value={form.role}
+                    onValueChange={(value) => {
+                      if (value)
+                        setForm((f) => ({
+                          ...f,
+                          role: value as LecturerRole,
+                        }))
+                    }}
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {LECTURER_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="lecturer-staffId">
+                    MSCB <OptionalTag />
+                  </Label>
+                  <Input
+                    id="lecturer-staffId"
+                    value={form.staffId}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, staffId: e.target.value }))
+                    }
+                    placeholder="Mã số cán bộ"
+                    className="h-10 rounded-xl"
+                  />
+                </div>
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="lecturer-email">
                     Email <OptionalTag />
@@ -196,22 +256,23 @@ export function LecturerFormDialog({
                     className="h-10 rounded-xl"
                   />
                 </div>
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="lecturer-phone">
-                    Điện thoại <OptionalTag />
-                  </Label>
-                  <Input
-                    id="lecturer-phone"
-                    type="tel"
-                    inputMode="tel"
-                    value={form.phone}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, phone: e.target.value }))
-                    }
-                    placeholder="09xx xxx xxx"
-                    className="h-10 rounded-xl"
-                  />
-                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="lecturer-phone">
+                  Điện thoại <OptionalTag />
+                </Label>
+                <Input
+                  id="lecturer-phone"
+                  type="tel"
+                  inputMode="tel"
+                  value={form.phone}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, phone: e.target.value }))
+                  }
+                  placeholder="09xx xxx xxx"
+                  className="h-10 rounded-xl"
+                />
               </div>
 
               <div className="flex flex-col gap-1.5">

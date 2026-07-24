@@ -12,6 +12,8 @@ export type Lecturer = {
   staffId?: string
   name: string
   role: LecturerRole
+  /** ID khoa / bộ môn (slug, khớp với Department.id) */
+  departmentId?: string
   email?: string
   phone?: string
   note?: string

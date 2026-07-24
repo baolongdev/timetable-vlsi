@@ -2,14 +2,16 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import {
   ArrowLeft,
-  BookOpen,
+  Building2,
   Pencil,
   Plus,
   Search,
   Trash2,
   UserRound,
+  Users,
 } from "lucide-react"
 
 import { LecturerDeleteDialog } from "@/components/lecturers/lecturer-delete-dialog"
@@ -42,7 +44,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { initialLecturers } from "@/data/lecturers"
+import { useDepartments } from "@/lib/department-store"
 import { getLecturerColor } from "@/lib/lecturer-colors"
 import { lecturerStore, useLecturers } from "@/lib/lecturer-store"
 import { getInitials } from "@/lib/person-color"
@@ -61,13 +63,22 @@ function roleBadgeVariant(
   return "outline"
 }
 
-export function LecturersView({
-  initialData = initialLecturers,
-}: {
-  /** Lecturers from the server (DB / Mongo); falls back to static data */
-  initialData?: Lecturer[]
-}) {
-  const { lecturers, remoteConfigured } = useLecturers(initialData)
+export function LecturersView() {
+  const { lecturers } = useLecturers()
+  const { departments } = useDepartments()
+  const params = useParams<{ dept?: string }>()
+  const deptParam = params.dept ?? null
+
+  const dept = React.useMemo(
+    () => departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
+    [departments, deptParam]
+  )
+
+  const deptLecturers = React.useMemo(() => {
+    if (!dept) return lecturers
+    return lecturers.filter((l) => l.departmentId === dept.id)
+  }, [lecturers, dept])
+
   const [search, setSearch] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
 
@@ -79,7 +90,7 @@ export function LecturersView({
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase()
-    return lecturers.filter((l) => {
+    return deptLecturers.filter((l) => {
       const matchSearch =
         !q ||
         l.name.toLowerCase().includes(q) ||
@@ -89,7 +100,7 @@ export function LecturersView({
       const matchRole = roleFilter === "all" || l.role === roleFilter
       return matchSearch && matchRole
     })
-  }, [lecturers, search, roleFilter])
+  }, [deptLecturers, search, roleFilter])
 
   const openCreate = () => {
     setEditing(null)
@@ -120,52 +131,74 @@ export function LecturersView({
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col gap-6")}>
         {/* Header */}
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-2">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 flex-col gap-2">
             <Button
               variant="ghost"
               size="sm"
               className="w-fit -ml-2 text-muted-foreground"
-              render={<Link href="/timetable" />}
+              render={<Link href="/lecturers" />}
               nativeButton={false}
             >
               <ArrowLeft data-icon="inline-start" />
-              Timetable
+              Tổng quan
             </Button>
-            <div className="flex flex-col gap-1">
-              <h1 className="font-heading text-2xl font-semibold tracking-tight">
-                Giảng viên
+            <div className="flex min-w-0 flex-col gap-1">
+              <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
+                {dept ? `Giảng viên — ${dept.name}` : "Giảng viên"}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Quản lý danh sách giảng viên · {lecturers.length} người
-                {remoteConfigured ? (
-                  <span className="text-foreground/60"> · đồng bộ MongoDB</span>
-                ) : remoteConfigured === false ? (
-                  <span className="text-foreground/60"> · lưu cục bộ</span>
-                ) : null}
+                {deptLecturers.length} giảng viên{dept ? ` · ${dept.name}` : ""}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div
+            data-tour="lecturers-dept-switch"
+            className="scrollbar-minimal -mx-1 flex min-w-0 max-w-full items-center gap-1 overflow-x-auto px-1 sm:gap-2"
+          >
+            {departments.length > 1
+              ? departments.map((d) => (
+                  <Button
+                    key={d.id}
+                    variant={d.id === dept?.id ? "secondary" : "ghost"}
+                    size="sm"
+                    className="shrink-0 rounded-lg"
+                    render={<Link href={`/lecturers/${d.id}`} />}
+                    nativeButton={false}
+                  >
+                    {d.name}
+                  </Button>
+                ))
+              : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
+              render={<Link href="/departments" />}
+              nativeButton={false}
+            >
+              <Building2 data-icon="inline-start" />
+              Khoa
+            </Button>
             <Button
               variant="ghost"
               size="sm"
               data-tour="lecturers-nav-courses"
-              className="transition-opacity duration-150 hover:opacity-80"
+              className="shrink-0 transition-opacity duration-150 hover:opacity-80"
               render={<Link href="/courses" />}
               nativeButton={false}
             >
-              <BookOpen data-icon="inline-start" />
+              <Users data-icon="inline-start" />
               Môn học
             </Button>
-            <TourHelpButton />
-            <PresenceHeaderControl />
-            <span data-tour="theme-toggle" className="inline-flex">
-              <ThemeToggle />
+            <TourHelpButton className="shrink-0" />
+            <PresenceHeaderControl className="shrink-0" />
+            <span data-tour="theme-toggle" className="inline-flex shrink-0">
+              <ThemeToggle className="shrink-0" />
             </span>
             <Button
               data-tour="lecturers-add"
-              className="rounded-xl"
+              className="shrink-0 rounded-xl"
               onClick={openCreate}
             >
               <Plus data-icon="inline-start" />
@@ -216,14 +249,11 @@ export function LecturersView({
           data-tour="lecturers-table"
           className={cn(
             "scrollbar-minimal min-h-0 flex-1 overflow-auto rounded-xl border border-border/70",
-            // Let the sticky header stick to THIS scroll container, not the
-            // table's own overflow-x wrapper.
             "[&_[data-slot=table-container]]:overflow-visible"
           )}
         >
           <Table
             className={cn(
-              // Breathing room at the rounded container edges + row height
               "[&_td]:py-2.5 [&_th:first-child]:pl-4 [&_td:first-child]:pl-4",
               "[&_th:last-child]:pr-4 [&_td:last-child]:pr-4"
             )}
@@ -236,6 +266,9 @@ export function LecturersView({
                 </TableHead>
                 <TableHead>Họ và tên</TableHead>
                 <TableHead className="w-[140px]">Vai trò</TableHead>
+                {!dept ? (
+                  <TableHead className="hidden md:table-cell">Khoa</TableHead>
+                ) : null}
                 <TableHead className="hidden md:table-cell">Email</TableHead>
                 <TableHead className="hidden lg:table-cell">
                   Điện thoại
@@ -247,7 +280,7 @@ export function LecturersView({
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={dept ? 7 : 8}
                     className="h-40 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -257,95 +290,107 @@ export function LecturersView({
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((lecturer, index) => (
-                  <TableRow key={lecturer.id}>
-                    <TableCell className="text-center font-mono text-xs tabular-nums text-muted-foreground">
-                      {index + 1}
-                    </TableCell>
-                    <TableCell className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
-                      {lecturer.staffId ?? "—"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2.5">
-                        {(() => {
-                          const color = getLecturerColor(lecturer.name)
-                          return (
-                            <span
-                              className={cn(
-                                "flex size-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold",
-                                color.bg,
-                                color.text,
-                                color.border
-                              )}
-                              aria-hidden
-                            >
-                              {getInitials(lecturer.name)}
+                filtered.map((lecturer, index) => {
+                  const deptName = departments.find(
+                    (d) => d.id === lecturer.departmentId
+                  )?.name
+                  return (
+                    <TableRow key={lecturer.id}>
+                      <TableCell className="text-center font-mono text-xs tabular-nums text-muted-foreground">
+                        {index + 1}
+                      </TableCell>
+                      <TableCell className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:table-cell">
+                        {lecturer.staffId ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2.5">
+                          {(() => {
+                            const color = getLecturerColor(lecturer.name)
+                            return (
+                              <span
+                                className={cn(
+                                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold",
+                                  color.bg,
+                                  color.text,
+                                  color.border
+                                )}
+                                aria-hidden
+                              >
+                                {getInitials(lecturer.name)}
+                              </span>
+                            )
+                          })()}
+                          <div className="flex min-w-0 flex-col gap-0.5">
+                            <span className="font-medium tracking-tight">
+                              {lecturer.name}
                             </span>
-                          )
-                        })()}
-                        <div className="flex min-w-0 flex-col gap-0.5">
-                          <span className="font-medium tracking-tight">
-                            {lecturer.name}
-                          </span>
-                          {lecturer.note ? (
-                            <span className="line-clamp-1 text-xs text-muted-foreground">
-                              {lecturer.note}
-                            </span>
-                          ) : null}
+                            {lecturer.note ? (
+                              <span className="line-clamp-1 text-xs text-muted-foreground">
+                                {lecturer.note}
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={roleBadgeVariant(lecturer.role)}
-                        className="font-normal"
-                      >
-                        {lecturer.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden text-muted-foreground md:table-cell">
-                      {lecturer.email ?? "—"}
-                    </TableCell>
-                    <TableCell className="hidden font-mono text-xs tabular-nums text-muted-foreground lg:table-cell">
-                      {lecturer.phone ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-0.5">
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => openEdit(lecturer)}
-                                aria-label={`Sửa ${lecturer.name}`}
-                              />
-                            }
-                          >
-                            <Pencil />
-                          </TooltipTrigger>
-                          <TooltipContent>Sửa thông tin</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger
-                            render={
-                              <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                onClick={() => openDelete(lecturer)}
-                                aria-label={`Xóa ${lecturer.name}`}
-                                className="text-muted-foreground hover:text-destructive"
-                              />
-                            }
-                          >
-                            <Trash2 />
-                          </TooltipTrigger>
-                          <TooltipContent>Xóa giảng viên</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={roleBadgeVariant(lecturer.role)}
+                          className="font-normal"
+                        >
+                          {lecturer.role}
+                        </Badge>
+                      </TableCell>
+                      {!dept ? (
+                        <TableCell className="hidden text-muted-foreground md:table-cell">
+                          {deptName ?? (
+                            <span className="text-xs italic">—</span>
+                          )}
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="hidden text-muted-foreground md:table-cell">
+                        {lecturer.email ?? "—"}
+                      </TableCell>
+                      <TableCell className="hidden font-mono text-xs tabular-nums text-muted-foreground lg:table-cell">
+                        {lecturer.phone ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => openEdit(lecturer)}
+                                  aria-label={`Sửa ${lecturer.name}`}
+                                />
+                              }
+                            >
+                              <Pencil />
+                            </TooltipTrigger>
+                            <TooltipContent>Sửa thông tin</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => openDelete(lecturer)}
+                                  aria-label={`Xóa ${lecturer.name}`}
+                                  className="text-muted-foreground hover:text-destructive"
+                                />
+                              }
+                            >
+                              <Trash2 />
+                            </TooltipTrigger>
+                            <TooltipContent>Xóa giảng viên</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
@@ -356,6 +401,7 @@ export function LecturersView({
         open={formOpen}
         onOpenChange={setFormOpen}
         lecturer={editing}
+        defaultDepartmentId={dept?.id}
         onSubmit={handleSubmit}
       />
 
