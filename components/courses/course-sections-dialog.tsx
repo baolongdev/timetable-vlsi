@@ -332,8 +332,7 @@ export function CourseSectionsDialog({
                     <TableRow
                       key={`${s.code}-${s.group}`}
                       className={cn(
-                        conflict && "bg-destructive/5",
-                        !conflict && unassigned && "bg-amber-50 dark:bg-amber-950/20"
+                        (conflict || unassigned) && "bg-destructive/5"
                       )}
                     >
                       <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
