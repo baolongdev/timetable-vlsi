@@ -87,7 +87,11 @@ export function LecturersView() {
           l.guestDepartmentIds.length > 0
       )
     if (!dept) return lecturers
-    return lecturers.filter((l) => l.departmentId === dept.id)
+    return lecturers.filter(
+      (l) =>
+        l.departmentId === dept.id ||
+        l.guestDepartmentIds?.includes(dept.id)
+    )
   }, [lecturers, dept, isUnassigned, isGuestOnly])
 
   const pageTitle = isGuestOnly
