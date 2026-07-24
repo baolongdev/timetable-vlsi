@@ -326,10 +326,15 @@ export function CourseSectionsDialog({
                 <TableBody>
                   {sorted.map((s) => {
                     const conflict = getConflict?.(s)
+                    const teacher = getAssignment?.(s).teacher
+                    const unassigned = assignable && !teacher
                     return (
                     <TableRow
                       key={`${s.code}-${s.group}`}
-                      className={cn(conflict && "bg-destructive/5")}
+                      className={cn(
+                        conflict && "bg-destructive/5",
+                        !conflict && unassigned && "bg-amber-50 dark:bg-amber-950/20"
+                      )}
                     >
                       <TableCell className="font-mono text-xs tabular-nums text-muted-foreground">
                         {s.code}
