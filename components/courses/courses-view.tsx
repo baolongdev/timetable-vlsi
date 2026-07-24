@@ -433,7 +433,7 @@ export function CoursesView() {
           <Table
             containerClassName="overflow-visible"
             className={cn(
-              "min-w-[720px] border-separate border-spacing-0",
+              "min-w-[800px] border-separate border-spacing-0",
               "[&_td]:py-2.5 [&_th:first-child]:pl-4 [&_td:first-child]:pl-4",
               "[&_th:last-child]:pr-4 [&_td:last-child]:pr-4"
             )}
@@ -452,6 +452,9 @@ export function CoursesView() {
                 <TableHead className="sticky top-0 z-20 w-[100px] border-b bg-background text-center">
                   Nhóm lớp
                 </TableHead>
+                <TableHead className="sticky top-0 z-20 w-[90px] border-b bg-background text-center">
+                  Chưa phân công
+                </TableHead>
                 <TableHead className="sticky top-0 z-20 min-w-[140px] border-b bg-background">
                   CB giảng dạy
                 </TableHead>
@@ -467,7 +470,7 @@ export function CoursesView() {
               {!hydrated ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="h-40 text-center text-muted-foreground"
                   >
                     <span className="text-sm text-muted-foreground">
@@ -478,7 +481,7 @@ export function CoursesView() {
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="h-40 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -494,6 +497,13 @@ export function CoursesView() {
                   const sectionCount = effectiveSections.filter(
                     (s) => s.code === course.code
                   ).length
+                  const unassignedCount = dept
+                    ? dept.sections.filter(
+                        (s) =>
+                          s.code === course.code &&
+                          !getEffectiveAssignment(dept, s).teacher
+                      ).length
+                    : 0
                   const conflict = conflictByCode.get(course.code)
 
                   return (
@@ -576,6 +586,20 @@ export function CoursesView() {
                             <CalendarDays className="size-3.5 opacity-60" />
                             {sectionCount} nhóm
                           </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {unassignedCount > 0 ? (
+                          <Badge
+                            variant="destructive"
+                            className="font-mono text-xs tabular-nums"
+                          >
+                            {unassignedCount}
+                          </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">
                             —
