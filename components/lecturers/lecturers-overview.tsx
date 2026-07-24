@@ -138,13 +138,16 @@ export function LecturersOverview() {
             ))}
 
             {unassignedCount > 0 ? (
-              <div className="flex flex-col gap-3 rounded-xl border border-dashed border-border/50 p-5">
+              <Link
+                href="/lecturers/unassigned"
+                className="group flex flex-col gap-3 rounded-xl border border-dashed border-border/50 p-5 transition-colors hover:border-amber-300 hover:bg-amber-50/50 dark:hover:border-amber-700 dark:hover:bg-amber-950/30"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                    <Users className="size-4.5 text-muted-foreground" />
+                  <span className="flex size-9 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                    <Users className="size-4.5 text-amber-600 dark:text-amber-400" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <h2 className="truncate font-medium tracking-tight">
+                    <h2 className="truncate font-medium tracking-tight group-hover:text-amber-600 dark:group-hover:text-amber-400">
                       Chưa phân bộ môn
                     </h2>
                     <p className="text-xs text-muted-foreground">
@@ -159,7 +162,7 @@ export function LecturersOverview() {
                   </span>{" "}
                   giảng viên
                 </span>
-              </div>
+              </Link>
             ) : null}
           </div>
         )}

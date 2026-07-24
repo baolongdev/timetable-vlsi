@@ -68,16 +68,31 @@ export function LecturersView() {
   const { departments } = useDepartments()
   const params = useParams<{ dept?: string }>()
   const deptParam = params.dept ?? null
+  const isUnassigned = deptParam === "unassigned"
 
   const dept = React.useMemo(
-    () => departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
-    [departments, deptParam]
+    () =>
+      isUnassigned
+        ? null
+        : departments.find((d) => d.id === deptParam) ?? departments[0] ?? null,
+    [departments, deptParam, isUnassigned]
   )
 
   const deptLecturers = React.useMemo(() => {
+    if (isUnassigned) return lecturers.filter((l) => !l.departmentId)
     if (!dept) return lecturers
     return lecturers.filter((l) => l.departmentId === dept.id)
-  }, [lecturers, dept])
+  }, [lecturers, dept, isUnassigned])
+
+  const pageTitle = isUnassigned
+    ? "Chưa phân bộ môn"
+    : dept
+      ? `Giảng viên — ${dept.name}`
+      : "Giảng viên"
+
+  const pageSubtitle = isUnassigned
+    ? `${deptLecturers.length} giảng viên chưa chọn khoa`
+    : `${deptLecturers.length} giảng viên${dept ? ` · ${dept.name}` : ""}`
 
   const [search, setSearch] = React.useState("")
   const [roleFilter, setRoleFilter] = React.useState<string>("all")
@@ -145,10 +160,10 @@ export function LecturersView() {
             </Button>
             <div className="flex min-w-0 flex-col gap-1">
               <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
-                {dept ? `Giảng viên — ${dept.name}` : "Giảng viên"}
+                {pageTitle}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {deptLecturers.length} giảng viên{dept ? ` · ${dept.name}` : ""}
+                {pageSubtitle}
               </p>
             </div>
           </div>
@@ -170,6 +185,17 @@ export function LecturersView() {
                   </Button>
                 ))
               : null}
+            {isUnassigned ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0 rounded-lg"
+                render={<Link href="/lecturers/unassigned" />}
+                nativeButton={false}
+              >
+                Chưa phân khoa
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
