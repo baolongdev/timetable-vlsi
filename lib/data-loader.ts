@@ -26,9 +26,11 @@ export async function loadLecturers(): Promise<Lecturer[]> {
   const rows = await getDb().query.lecturers.findMany()
   return rows.map((r) => ({
     id: String(r.id),
-    staffId: r.staffId ?? undefined,
+    staffId: r.staffId ?? "",
     name: r.name,
     role: r.role as LecturerRole,
+    departmentId: (r as Record<string, unknown>).departmentId as string ?? "",
+    guestDepartmentIds: ((r as Record<string, unknown>).guestDepartmentIds as string[]) ?? [],
     email: r.email ?? undefined,
     phone: r.phone ?? undefined,
     note: r.note ?? undefined,

@@ -48,6 +48,8 @@ function fingerprintLecturers(list: Lecturer[]): string {
         name: l.name,
         role: l.role,
         staffId: l.staffId,
+        departmentId: l.departmentId,
+        guestDepartmentIds: l.guestDepartmentIds,
         email: l.email,
         phone: l.phone,
       }))
@@ -94,8 +96,14 @@ function loadState(): StoreState {
       return { lecturers: [], updatedAt: meta.updatedAt ?? 0 }
     }
     const parsed = JSON.parse(raw) as { lecturers?: Lecturer[] }
+    const lecturers = (parsed.lecturers ?? []).map((l) => ({
+      ...l,
+      staffId: l.staffId ?? "",
+      departmentId: l.departmentId ?? "",
+      guestDepartmentIds: l.guestDepartmentIds ?? [],
+    }))
     return {
-      lecturers: parsed.lecturers ?? [],
+      lecturers,
       updatedAt: meta.updatedAt ?? 0,
     }
   } catch {
@@ -307,10 +315,11 @@ export const lecturerStore = {
                 name: data.name,
                 role: data.role,
                 departmentId: data.departmentId,
+                guestDepartmentIds: data.guestDepartmentIds ?? [],
                 email: data.email,
                 phone: data.phone,
                 note: data.note,
-                staffId: data.staffId ?? l.staffId,
+                staffId: data.staffId,
               }
             : l
         )
@@ -328,6 +337,7 @@ export const lecturerStore = {
         name: data.name,
         role: data.role,
         departmentId: data.departmentId,
+        guestDepartmentIds: data.guestDepartmentIds ?? [],
         email: data.email,
         phone: data.phone,
         note: data.note,

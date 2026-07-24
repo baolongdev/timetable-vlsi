@@ -44,6 +44,7 @@ type FormState = {
   name: string
   role: LecturerRole
   departmentId: string
+  guestDepartmentIds: string[]
   staffId: string
   email: string
   phone: string
@@ -55,19 +56,12 @@ function buildEmptyForm(defaultDepartmentId?: string): FormState {
     name: "",
     role: "Giảng viên",
     departmentId: defaultDepartmentId ?? "",
+    guestDepartmentIds: [],
     staffId: "",
     email: "",
     phone: "",
     note: "",
   }
-}
-
-function OptionalTag() {
-  return (
-    <span className="text-[11px] font-normal text-muted-foreground">
-      · tùy chọn
-    </span>
-  )
 }
 
 export function LecturerFormDialog({
@@ -82,7 +76,7 @@ export function LecturerFormDialog({
   const [form, setForm] = React.useState<FormState>(() =>
     buildEmptyForm(defaultDepartmentId)
   )
-  const [error, setError] = React.useState<string | null>(null)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
 
   React.useEffect(() => {
     if (!open) return
@@ -91,6 +85,7 @@ export function LecturerFormDialog({
         name: lecturer.name,
         role: lecturer.role,
         departmentId: lecturer.departmentId ?? "",
+        guestDepartmentIds: lecturer.guestDepartmentIds ?? [],
         staffId: lecturer.staffId ?? "",
         email: lecturer.email ?? "",
         phone: lecturer.phone ?? "",
@@ -99,22 +94,28 @@ export function LecturerFormDialog({
     } else {
       setForm(buildEmptyForm(defaultDepartmentId))
     }
-    setError(null)
+    setErrors({})
   }, [open, lecturer, defaultDepartmentId])
+
+  const validate = (): boolean => {
+    const e: Record<string, string> = {}
+    if (!form.name.trim()) e.name = "Vui lòng nhập họ tên giảng viên."
+    if (!form.departmentId) e.departmentId = "Vui lòng chọn bộ môn."
+    if (!form.staffId.trim()) e.staffId = "Vui lòng nhập MSCB."
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const name = form.name.trim()
-    if (!name) {
-      setError("Vui lòng nhập họ tên giảng viên.")
-      return
-    }
+    if (!validate()) return
     onSubmit({
       id: lecturer?.id,
-      name,
+      name: form.name.trim(),
       role: form.role,
-      departmentId: form.departmentId || undefined,
-      staffId: form.staffId.trim() || undefined,
+      departmentId: form.departmentId,
+      guestDepartmentIds: form.guestDepartmentIds,
+      staffId: form.staffId.trim(),
       email: form.email.trim() || undefined,
       phone: form.phone.trim() || undefined,
       note: form.note.trim() || undefined,
@@ -122,11 +123,24 @@ export function LecturerFormDialog({
     onOpenChange(false)
   }
 
+  const otherDepartments = departments.filter(
+    (d) => d.id !== form.departmentId
+  )
+
+  const toggleGuestDept = (deptId: string) => {
+    setForm((f) => ({
+      ...f,
+      guestDepartmentIds: f.guestDepartmentIds.includes(deptId)
+        ? f.guestDepartmentIds.filter((id) => id !== deptId)
+        : [...f.guestDepartmentIds, deptId],
+    }))
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <form onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-5 p-6">
+      <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 overflow-y-auto p-6">
             <DialogHeader className="gap-1.5">
               <div className="flex items-center gap-3">
                 {isEdit ? (
@@ -157,7 +171,9 @@ export function LecturerFormDialog({
 
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lecturer-name">Họ và tên</Label>
+                <Label htmlFor="lecturer-name">
+                  Họ và tên <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="lecturer-name"
                   value={form.name}
@@ -165,28 +181,47 @@ export function LecturerFormDialog({
                     setForm((f) => ({ ...f, name: e.target.value }))
                   }
                   placeholder="VD: Trần Ngọc Thịnh"
-                  className="h-10 rounded-xl"
+                  className={cn(
+                    "h-10 rounded-xl",
+                    errors.name && "border-destructive"
+                  )}
                   autoFocus
                 />
+                {errors.name && (
+                  <p className="text-xs text-destructive">{errors.name}</p>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
-                  <Label>Bộ môn / khoa</Label>
+                  <Label>
+                    Bộ môn <span className="text-destructive">*</span>
+                  </Label>
                   <Select
-                    value={form.departmentId || null}
-                    onValueChange={(value) =>
-                      setForm((f) => ({
-                        ...f,
-                        departmentId: value ?? "",
-                      }))
-                    }
-                    items={Object.fromEntries(
-                      departments.map((d) => [d.id, d.name])
-                    )}
+                    value={form.departmentId || "__empty__"}
+                    onValueChange={(value) => {
+                      if (value && value !== "__empty__") {
+                        setForm((f) => ({
+                          ...f,
+                          departmentId: value,
+                          guestDepartmentIds: f.guestDepartmentIds.filter(
+                            (id) => id !== value
+                          ),
+                        }))
+                      }
+                    }}
+                    items={departments.map((d) => ({
+                      label: d.name,
+                      value: d.id,
+                    }))}
                   >
-                    <SelectTrigger className="h-10 w-full rounded-xl">
-                      <SelectValue placeholder="Chọn khoa" />
+                    <SelectTrigger
+                      className={cn(
+                        "h-10 w-full rounded-xl",
+                        errors.departmentId && "border-destructive"
+                      )}
+                    >
+                      <SelectValue placeholder="Chọn bộ môn…" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -198,6 +233,11 @@ export function LecturerFormDialog({
                       </SelectGroup>
                     </SelectContent>
                   </Select>
+                  {errors.departmentId && (
+                    <p className="text-xs text-destructive">
+                      {errors.departmentId}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -231,7 +271,7 @@ export function LecturerFormDialog({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="flex flex-col gap-1.5">
                   <Label htmlFor="lecturer-staffId">
-                    MSCB <OptionalTag />
+                    MSCB <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="lecturer-staffId"
@@ -240,13 +280,17 @@ export function LecturerFormDialog({
                       setForm((f) => ({ ...f, staffId: e.target.value }))
                     }
                     placeholder="Mã số cán bộ"
-                    className="h-10 rounded-xl"
+                    className={cn(
+                      "h-10 rounded-xl",
+                      errors.staffId && "border-destructive"
+                    )}
                   />
+                  {errors.staffId && (
+                    <p className="text-xs text-destructive">{errors.staffId}</p>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="lecturer-email">
-                    Email <OptionalTag />
-                  </Label>
+                  <Label htmlFor="lecturer-email">Email</Label>
                   <Input
                     id="lecturer-email"
                     type="email"
@@ -261,9 +305,7 @@ export function LecturerFormDialog({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lecturer-phone">
-                  Điện thoại <OptionalTag />
-                </Label>
+                <Label htmlFor="lecturer-phone">Điện thoại</Label>
                 <Input
                   id="lecturer-phone"
                   type="tel"
@@ -277,10 +319,61 @@ export function LecturerFormDialog({
                 />
               </div>
 
+              {form.departmentId && otherDepartments.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <Label>Bộ môn thỉnh giảng</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {otherDepartments.map((d) => {
+                      const checked = form.guestDepartmentIds.includes(d.id)
+                      return (
+                        <button
+                          key={d.id}
+                          type="button"
+                          onClick={() => toggleGuestDept(d.id)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+                            checked
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border/60 bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex size-3.5 shrink-0 items-center justify-center rounded-[4px] border",
+                              checked
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-muted-foreground/30"
+                            )}
+                          >
+                            {checked && (
+                              <svg
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                className="size-2.5"
+                              >
+                                <path
+                                  d="M10 3L4.5 8.5L2 6"
+                                  stroke="currentColor"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          {d.name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Giảng viên có thể được phân công dạy các bộ môn bên dưới.
+                  </p>
+                </div>
+              )}
+
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="lecturer-note">
-                  Ghi chú <OptionalTag />
-                </Label>
+                <Label htmlFor="lecturer-note">Ghi chú</Label>
                 <Textarea
                   id="lecturer-note"
                   value={form.note}
@@ -291,14 +384,10 @@ export function LecturerFormDialog({
                   className="min-h-20 rounded-xl"
                 />
               </div>
-
-              {error ? (
-                <p className="text-sm text-destructive">{error}</p>
-              ) : null}
             </div>
           </div>
 
-          <DialogFooter className="mx-0 mb-0 border-t border-border/60 bg-muted/30 px-6 py-4">
+          <DialogFooter className="mx-0 mb-0 shrink-0 border-t border-border/60 bg-muted/30 px-6 py-4">
             <Button
               type="button"
               variant="outline"

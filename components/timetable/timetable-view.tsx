@@ -2,9 +2,8 @@
 
 import * as React from "react"
 import dynamic from "next/dynamic"
-import Link from "next/link"
 import { useParams } from "next/navigation"
-import { Building2, FileSpreadsheet, AlertTriangle, DoorOpen, UserRound } from "lucide-react"
+import { FileSpreadsheet, AlertTriangle, DoorOpen, UserRound } from "lucide-react"
 
 import { UploadAssignmentButton } from "@/components/import/upload-assignment-button"
 import { ConflictDrawer } from "@/components/timetable/conflict-drawer"
@@ -324,35 +323,8 @@ export function TimetableView() {
           onExportPdf={() => void runVisualExport("pdf")}
           exporting={exporting}
           departmentName={dept?.name}
-          importSlot={
-            <div data-tour="dept-switch" className="flex items-center gap-1">
-              {/* Chuyển nhanh giữa các khoa đã import */}
-              {departments.length > 1
-                ? departments.map((d) => (
-                    <Button
-                      key={d.id}
-                      variant={d.id === dept?.id ? "secondary" : "ghost"}
-                      size="sm"
-                      className="rounded-lg"
-                      render={<Link href={`/timetable/${d.id}`} />}
-                      nativeButton={false}
-                    >
-                      {d.name}
-                    </Button>
-                  ))
-                : null}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="transition-opacity duration-150 hover:opacity-80"
-                render={<Link href="/departments" />}
-                nativeButton={false}
-              >
-                <Building2 data-icon="inline-start" />
-                Khoa
-              </Button>
-            </div>
-          }
+          departments={departments}
+          currentDeptId={dept?.id}
           conflictSlot={<ConflictDrawer index={conflictIndex} />}
         />
 
@@ -522,6 +494,7 @@ export function TimetableView() {
         assignment={currentAssignment}
         conflictMessages={selectedConflictMessages}
         conflictingLecturers={conflictingLecturers}
+        filterDepartmentId={dept?.id}
         onAssignmentChange={
           dept && selected
             ? (patch) => {

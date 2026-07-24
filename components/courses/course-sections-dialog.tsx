@@ -50,6 +50,8 @@ type CourseSectionsDialogProps = {
   getConflict?: (section: CourseSection) => string | undefined
   /** Tên GV trùng lịch với nhóm này — vô hiệu hóa trong picker */
   getConflictingLecturers?: (section: CourseSection) => Set<string> | undefined
+  /** ID khoa hiện tại — để filter picker theo khoa chính + thỉnh giảng */
+  filterDepartmentId?: string
 }
 
 type SortKey =
@@ -134,6 +136,7 @@ export function CourseSectionsDialog({
   onAssign,
   getConflict,
   getConflictingLecturers,
+  filterDepartmentId,
 }: CourseSectionsDialogProps) {
   const [sorts, setSorts] = React.useState<SortState[]>([])
 
@@ -406,6 +409,7 @@ export function CourseSectionsDialog({
                             }
                             placeholder="Chọn CB giảng dạy…"
                             disabledValues={getConflictingLecturers?.(s)}
+                            filterDepartmentId={filterDepartmentId}
                           />
                         </TableCell>
                       ) : null}

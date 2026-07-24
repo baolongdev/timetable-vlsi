@@ -81,6 +81,7 @@ export function LecturersOverview() {
               <BookOpen data-icon="inline-start" />
               Môn học
             </Button>
+            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
             <TourHelpButton />
             <PresenceHeaderControl />
             <span data-tour="theme-toggle" className="inline-flex">

@@ -1,8 +1,10 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import {
   BookOpen,
+  Building2,
   Download,
   FileImage,
   FileText,
@@ -16,14 +18,13 @@ import { PresenceHeaderControl } from "@/components/presence-widget"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Menubar,
+  MenubarContent,
+  MenubarItem,
+  MenubarMenu,
+  MenubarSeparator,
+  MenubarTrigger,
+} from "@/components/ui/menubar"
 import {
   Tooltip,
   TooltipContent,
@@ -42,8 +43,10 @@ type TimetableHeaderProps = {
   exporting?: boolean
   /** Tên khoa / tổ đang xem */
   departmentName?: string
-  /** Slot cho nút chuyển khoa / upload */
-  importSlot?: React.ReactNode
+  /** Department list for menu */
+  departments?: { id: string; name: string }[]
+  /** Current dept id */
+  currentDeptId?: string
   /** Slot cảnh báo trùng lịch (icon + drawer) */
   conflictSlot?: React.ReactNode
   className?: string
@@ -55,7 +58,8 @@ export function TimetableHeader({
   onExportPdf,
   exporting = false,
   departmentName,
-  importSlot,
+  departments = [],
+  currentDeptId,
   conflictSlot,
   className,
 }: TimetableHeaderProps) {
@@ -85,111 +89,133 @@ export function TimetableHeader({
 
       <div
         data-tour="header-actions"
-        className="flex flex-wrap items-center gap-1"
+        className="flex items-center gap-1"
       >
-        {importSlot}
-        {conflictSlot}
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      data-tour="export"
-                      disabled={exporting}
-                      className="transition-opacity duration-150 hover:opacity-80"
-                    />
-                  }
-                />
-              }
+        <Menubar className="h-9 rounded-xl border-0 bg-muted/40 p-0.5">
+          {/* Bộ môn */}
+          {departments.length > 1 ? (
+            <MenubarMenu>
+              <MenubarTrigger className="gap-1.5 px-2.5">
+                <Building2 className="size-4 shrink-0" />
+                Bộ môn
+              </MenubarTrigger>
+              <MenubarContent align="start">
+                {departments.map((d) => (
+                  <MenubarItem
+                    key={d.id}
+                    className={cn(
+                      "cursor-pointer gap-2",
+                      d.id === currentDeptId && "font-semibold"
+                    )}
+                    render={<Link href={`/timetable/${d.id}`} />}
+                  >
+                    {d.id === currentDeptId ? "✓ " : null}
+                    {d.name}
+                  </MenubarItem>
+                ))}
+                <MenubarSeparator />
+                <MenubarItem
+                  className="gap-2"
+                  render={<Link href="/departments" />}
+                >
+                  <Building2 className="size-4" />
+                  Quản lý khoa
+                </MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+          ) : null}
+
+          {/* Trang */}
+          <MenubarMenu>
+            <MenubarTrigger className="gap-1.5 px-2.5">
+              <BookOpen className="size-4 shrink-0" />
+              Trang
+            </MenubarTrigger>
+            <MenubarContent align="start">
+              <MenubarItem
+                className="gap-2"
+                render={<Link href="/courses" />}
+              >
+                <BookOpen className="size-4" />
+                Môn học
+              </MenubarItem>
+              <MenubarItem
+                className="gap-2"
+                render={<Link href="/lecturers" />}
+              >
+                <Users className="size-4" />
+                Giảng viên
+              </MenubarItem>
+              <MenubarSeparator />
+              <MenubarItem
+                className="gap-2"
+                render={<Link href="/departments" />}
+              >
+                <Building2 className="size-4" />
+                Quản lý khoa
+              </MenubarItem>
+            </MenubarContent>
+          </MenubarMenu>
+
+          {/* Xuất file */}
+          <MenubarMenu>
+            <MenubarTrigger
+              disabled={exporting}
+              className="gap-1.5 px-2.5"
             >
               {exporting ? (
-                <Loader2
-                  data-icon="inline-start"
-                  className="animate-spin"
-                />
+                <Loader2 className="size-4 shrink-0 animate-spin" />
               ) : (
-                <Download data-icon="inline-start" />
+                <Download className="size-4 shrink-0" />
               )}
-              Export
-            </TooltipTrigger>
-            <TooltipContent>
-              Tải thời khóa biểu: CSV · Ảnh PNG · PDF
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuGroup>
-              <DropdownMenuLabel>Tải thời khóa biểu</DropdownMenuLabel>
-              <DropdownMenuItem onClick={onExport}>
-                <Table2 />
+              Xuất
+            </MenubarTrigger>
+            <MenubarContent align="end" className="w-64">
+              <MenubarItem className="gap-2" onClick={onExport}>
+                <Table2 className="size-4" />
                 <div className="flex flex-col">
                   <span>File CSV</span>
                   <span className="text-[11px] text-muted-foreground">
                     Danh sách đang lọc — mở bằng Excel
                   </span>
                 </div>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            {onExportImage || onExportPdf ? <DropdownMenuSeparator /> : null}
-            {onExportImage || onExportPdf ? (
-              <DropdownMenuGroup>
-                {onExportImage ? (
-                  <DropdownMenuItem
-                    disabled={exporting}
-                    onClick={onExportImage}
-                  >
-                    <FileImage />
-                    <div className="flex flex-col">
-                      <span>Ảnh PNG</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        Toàn bộ grid trong một ảnh nét cao
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ) : null}
-                {onExportPdf ? (
-                  <DropdownMenuItem
-                    disabled={exporting}
-                    onClick={onExportPdf}
-                  >
-                    <FileText />
-                    <div className="flex flex-col">
-                      <span>File PDF</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        Một trang, khổ giấy vừa đúng grid
-                      </span>
-                    </div>
-                  </DropdownMenuItem>
-                ) : null}
-              </DropdownMenuGroup>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          variant="ghost"
-          size="sm"
-          data-tour="nav-courses"
-          className="transition-opacity duration-150 hover:opacity-80"
-          render={<Link href="/courses" />}
-          nativeButton={false}
-        >
-          <BookOpen data-icon="inline-start" />
-          Môn học
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          data-tour="nav-lecturers"
-          className="transition-opacity duration-150 hover:opacity-80"
-          render={<Link href="/lecturers" />}
-          nativeButton={false}
-        >
-          <Users data-icon="inline-start" />
-          Giảng viên
-        </Button>
+              </MenubarItem>
+              {onExportImage || onExportPdf ? <MenubarSeparator /> : null}
+              {onExportImage ? (
+                <MenubarItem
+                  className="gap-2"
+                  disabled={exporting}
+                  onClick={onExportImage}
+                >
+                  <FileImage className="size-4" />
+                  <div className="flex flex-col">
+                    <span>Ảnh PNG</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Toàn bộ grid trong một ảnh nét cao
+                    </span>
+                  </div>
+                </MenubarItem>
+              ) : null}
+              {onExportPdf ? (
+                <MenubarItem
+                  className="gap-2"
+                  disabled={exporting}
+                  onClick={onExportPdf}
+                >
+                  <FileText className="size-4" />
+                  <div className="flex flex-col">
+                    <span>File PDF</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Một trang, khổ giấy vừa đúng grid
+                    </span>
+                  </div>
+                </MenubarItem>
+              ) : null}
+            </MenubarContent>
+          </MenubarMenu>
+        </Menubar>
+
+        {conflictSlot}
         <TourHelpButton />
         <PresenceHeaderControl />
         <span data-tour="theme-toggle" className="inline-flex">

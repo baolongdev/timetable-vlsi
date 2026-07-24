@@ -2,7 +2,7 @@
 
 import * as React from "react"
 
-import { X, AlertTriangle } from "lucide-react"
+import { X, AlertTriangle, ArrowRightLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,6 +22,7 @@ import {
   groupLecturersByRole,
 } from "@/lib/lecturer-staff"
 import { cn } from "@/lib/utils"
+import type { Lecturer } from "@/types/lecturer"
 
 /** Sentinel nội bộ — không hiển thị; SelectValue tự render placeholder */
 const EMPTY = "__empty__"
@@ -37,6 +38,22 @@ type LecturerPickerProps = {
   allowClear?: boolean
   /** Tên GV bị vô hiệu hóa (trùng lịch) — không cho chọn */
   disabledValues?: Set<string>
+  /**
+   * Khoa hiện tại — nếu truyền thì chỉ hiện GV của khoa đó +
+   * GV có guestDepartmentIds chứa khoa đó.
+   * Khi không truyền → hiện tất cả (backward-compat).
+   */
+  filterDepartmentId?: string
+}
+
+function isLecturerInDept(
+  l: Lecturer,
+  departmentId: string
+): boolean {
+  return (
+    l.departmentId === departmentId ||
+    (l.guestDepartmentIds ?? []).includes(departmentId)
+  )
 }
 
 /**
@@ -51,23 +68,31 @@ export function LecturerPicker({
   className,
   allowClear = false,
   disabledValues,
+  filterDepartmentId,
 }: LecturerPickerProps) {
   const { lecturers } = useLecturers()
 
+  const filteredLecturers = React.useMemo(() => {
+    if (!filterDepartmentId) return lecturers
+    return lecturers.filter((l) =>
+      isLecturerInDept(l, filterDepartmentId)
+    )
+  }, [lecturers, filterDepartmentId])
+
   const groups = React.useMemo(
-    () => groupLecturersByRole(undefined, lecturers),
-    [lecturers]
+    () => groupLecturersByRole(undefined, filteredLecturers),
+    [filteredLecturers]
   )
 
   const items = React.useMemo<SelectOption[]>(
     () => [
       { label: placeholder, value: EMPTY },
-      ...lecturers.map((l) => ({
-        label: formatLecturerWithStaffId(l.name, lecturers),
+      ...filteredLecturers.map((l) => ({
+        label: formatLecturerWithStaffId(l.name, filteredLecturers),
         value: l.name,
       })),
     ],
-    [placeholder, lecturers]
+    [placeholder, filteredLecturers]
   )
 
   const selectValue =
@@ -91,7 +116,7 @@ export function LecturerPicker({
           <SelectValue placeholder={placeholder}>
             {(selected: string | null) => {
               if (!selected || selected === EMPTY) return placeholder
-              return formatLecturerWithStaffId(selected, lecturers)
+              return formatLecturerWithStaffId(selected, filteredLecturers)
             }}
           </SelectValue>
         </SelectTrigger>
@@ -107,19 +132,35 @@ export function LecturerPicker({
               {index > 0 ? <SelectSeparator /> : null}
               <SelectLabel>{group.role}</SelectLabel>
               {group.names.map((name) => {
-                const staffId = getStaffIdByName(name, lecturers)
+                const staffId = getStaffIdByName(name, filteredLecturers)
                 const isDisabled = disabledValues?.has(name) ?? false
+                const lecturer = filteredLecturers.find(
+                  (l) => l.name === name
+                )
+                const isGuest =
+                  filterDepartmentId &&
+                  lecturer &&
+                  lecturer.departmentId !== filterDepartmentId
                 return (
                   <SelectItem
                     key={name}
                     value={name}
                     disabled={isDisabled}
-                    title={isDisabled ? "Trùng lịch với nhóm đang xem" : undefined}
+                    title={
+                      isDisabled
+                        ? "Trùng lịch với nhóm đang xem"
+                        : undefined
+                    }
                   >
                     {staffId ? (
                       <span className="flex w-full items-center justify-between gap-3">
                         <span className="flex items-center gap-1.5">
                           {name}
+                          {isGuest ? (
+                            <span title="Thỉnh giảng">
+                              <ArrowRightLeft className="size-3 shrink-0 text-amber-500" />
+                            </span>
+                          ) : null}
                           {isDisabled ? (
                             <AlertTriangle className="size-3 shrink-0 text-destructive" />
                           ) : null}
@@ -131,6 +172,11 @@ export function LecturerPicker({
                     ) : (
                       <span className="flex items-center gap-1.5">
                         {name}
+                        {isGuest ? (
+                          <span title="Thỉnh giảng">
+                            <ArrowRightLeft className="size-3 shrink-0 text-amber-500" />
+                          </span>
+                          ) : null}
                         {isDisabled ? (
                           <AlertTriangle className="size-3 shrink-0 text-destructive" />
                         ) : null}

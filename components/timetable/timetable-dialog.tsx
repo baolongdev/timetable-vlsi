@@ -45,6 +45,8 @@ type TimetableDialogProps = {
   conflictMessages?: string[]
   /** Tên GV trùng lịch với nhóm này — vô hiệu hóa trong picker */
   conflictingLecturers?: Set<string>
+  /** ID khoa hiện tại — để filter picker theo khoa chính + thỉnh giảng */
+  filterDepartmentId?: string
 }
 
 function Row({
@@ -81,6 +83,7 @@ export function TimetableDialog({
   onAssignmentChange,
   conflictMessages,
   conflictingLecturers,
+  filterDepartmentId,
 }: TimetableDialogProps) {
   const { lecturers: roster } = useLecturers()
 
@@ -249,6 +252,7 @@ export function TimetableDialog({
                       allowClear
                       className="rounded-xl"
                       disabledValues={conflictingLecturers}
+                      filterDepartmentId={filterDepartmentId}
                     />
                   </div>
                 </>
@@ -270,6 +274,7 @@ export function TimetableDialog({
                       placeholder="Chọn giảng viên…"
                       className="rounded-xl"
                       disabledValues={conflictingLecturers}
+                      filterDepartmentId={filterDepartmentId}
                     />
                   ) : (
                     <p className="text-sm font-medium">

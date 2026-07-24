@@ -140,6 +140,7 @@ export function lecturerToDoc(l: Lecturer, updatedAt = Date.now()): LecturerDoc 
     name: l.name,
     role: l.role,
     departmentId: l.departmentId,
+    guestDepartmentIds: l.guestDepartmentIds ?? [],
     email: l.email,
     phone: l.phone,
     note: l.note,
@@ -150,10 +151,11 @@ export function lecturerToDoc(l: Lecturer, updatedAt = Date.now()): LecturerDoc 
 export function docToLecturer(doc: LecturerDoc): Lecturer {
   return {
     id: doc.id,
-    staffId: doc.staffId,
+    staffId: doc.staffId ?? "",
     name: doc.name,
     role: doc.role,
-    departmentId: doc.departmentId,
+    departmentId: doc.departmentId ?? "",
+    guestDepartmentIds: doc.guestDepartmentIds ?? [],
     email: doc.email,
     phone: doc.phone,
     note: doc.note,

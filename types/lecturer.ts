@@ -8,12 +8,14 @@ export type LecturerRole =
 
 export type Lecturer = {
   id: string
-  /** MSCB — mã số cán bộ */
-  staffId?: string
+  /** MSCB — mã số cán bộ (bắt buộc) */
+  staffId: string
   name: string
   role: LecturerRole
-  /** ID khoa / bộ môn (slug, khớp với Department.id) */
-  departmentId?: string
+  /** ID khoa / bộ môn chính (bắt buộc) */
+  departmentId: string
+  /** ID các bộ môn mà giảng viên thỉnh giảng */
+  guestDepartmentIds: string[]
   email?: string
   phone?: string
   note?: string

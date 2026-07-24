@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
   ArrowLeft,
+  ArrowRightLeft,
   Building2,
   Pencil,
   Plus,
@@ -217,11 +218,13 @@ export function LecturersView() {
               <Users data-icon="inline-start" />
               Môn học
             </Button>
+            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
             <TourHelpButton className="shrink-0" />
             <PresenceHeaderControl className="shrink-0" />
             <span data-tour="theme-toggle" className="inline-flex shrink-0">
               <ThemeToggle className="shrink-0" />
             </span>
+            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
             <Button
               data-tour="lecturers-add"
               className="shrink-0 rounded-xl"
@@ -292,6 +295,9 @@ export function LecturersView() {
                 </TableHead>
                 <TableHead>Họ và tên</TableHead>
                 <TableHead className="w-[140px]">Vai trò</TableHead>
+                <TableHead className="hidden w-[200px] lg:table-cell">
+                  Thỉnh giảng
+                </TableHead>
                 {!dept ? (
                   <TableHead className="hidden md:table-cell">Khoa</TableHead>
                 ) : null}
@@ -306,7 +312,7 @@ export function LecturersView() {
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={dept ? 7 : 8}
+                    colSpan={dept ? 8 : 9}
                     className="h-40 text-center text-muted-foreground"
                   >
                     <div className="flex flex-col items-center gap-2">
@@ -365,6 +371,29 @@ export function LecturersView() {
                         >
                           {lecturer.role}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        {lecturer.guestDepartmentIds?.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {lecturer.guestDepartmentIds.map((gId) => {
+                              const gDept = departments.find(
+                                (d) => d.id === gId
+                              )
+                              return gDept ? (
+                                <Badge
+                                  key={gId}
+                                  variant="outline"
+                                  className="gap-1 text-[10px] font-normal text-amber-600"
+                                >
+                                  <ArrowRightLeft className="size-2.5" />
+                                  {gDept.name}
+                                </Badge>
+                              ) : null
+                            })}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       {!dept ? (
                         <TableCell className="hidden text-muted-foreground md:table-cell">

@@ -3,7 +3,6 @@
 import * as React from "react"
 import {
   AlertTriangle,
-  CalendarRange,
   Clock,
   Copy,
   GraduationCap,
@@ -363,7 +362,7 @@ export function TimetableCard({
               <InfoTooltip
                 label={
                   schedule.lecturer !== "Chưa phân công"
-                    ? `CB giảng dạy: ${teacherLabel}`
+                    ? `${teacherLabel} · ${schedule.room}`
                     : "Chưa phân công CB giảng dạy"
                 }
               >
@@ -391,12 +390,21 @@ export function TimetableCard({
                       </span>
                     ) : null}
                   </span>
+                  {schedule.room ? (
+                    <>
+                      <span className="text-border">·</span>
+                      <MapPin className="size-3 shrink-0 opacity-50" />
+                      <span className="truncate text-[12px] text-muted-foreground">
+                        {schedule.room}
+                      </span>
+                    </>
+                  ) : null}
                 </span>
               </InfoTooltip>
             </>
           )}
 
-          {/* ≥3 tiết / expand: full */}
+          {/* ≥3 tiết / expand: full — grouped layout */}
           {!isSingle && !isDouble && (
             <>
               <InfoTooltip label={codeGroupLabel}>
@@ -414,37 +422,34 @@ export function TimetableCard({
                   >
                     {schedule.className}
                   </Badge>
+                  <span className="text-[11px] text-border">·</span>
+                  <Badge
+                    variant="outline"
+                    className="h-5 border-border/70 font-mono text-[10px] tabular-nums text-muted-foreground"
+                  >
+                    {weeksLabel}
+                  </Badge>
                 </span>
               </InfoTooltip>
 
-              <div className="mt-0.5 flex flex-col items-start gap-1">
+              <div className="mt-0.5 flex flex-col items-start gap-0.5">
                 <PersonLine
                   icon={GraduationCap}
                   label="Cán bộ giảng dạy"
                   name={schedule.teacher || schedule.lecturer}
                 />
-                <InfoTooltip label={`Phòng: ${schedule.room}`}>
+                <InfoTooltip label={`${schedule.room} · ${timeRange}`}>
                   <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
                     <MapPin className="size-3.5 shrink-0 opacity-60" />
                     <span className="truncate">{schedule.room}</span>
-                  </span>
-                </InfoTooltip>
-                <InfoTooltip label={weeksLabel}>
-                  <span className="inline-flex max-w-full items-center gap-1.5 text-[13px] text-muted-foreground">
-                    <CalendarRange className="size-3.5 shrink-0 opacity-60" />
+                    <span className="text-border">·</span>
+                    <Clock className="size-3 shrink-0 opacity-60" />
                     <span className="truncate font-mono text-xs tabular-nums">
-                      {weeksLabel}
+                      {timeRange}
                     </span>
                   </span>
                 </InfoTooltip>
               </div>
-
-              <InfoTooltip label={`Giờ học: ${timeRange}`}>
-                <p className="mt-auto inline-flex w-fit max-w-full items-center gap-1.5 pt-1 font-mono text-xs tabular-nums text-muted-foreground">
-                  <Clock className="size-3 shrink-0 opacity-60" />
-                  {timeRange}
-                </p>
-              </InfoTooltip>
             </>
           )}
         </div>

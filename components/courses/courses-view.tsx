@@ -366,6 +366,7 @@ export function CoursesView() {
               <Building2 data-icon="inline-start" />
               Khoa
             </Button>
+            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
             <Button
               variant="ghost"
               size="sm"
@@ -377,6 +378,7 @@ export function CoursesView() {
               <Users data-icon="inline-start" />
               Giảng viên
             </Button>
+            <span className="hidden h-5 w-px shrink-0 bg-border/60 sm:block" />
             <TourHelpButton className="shrink-0" />
             <PresenceHeaderControl className="shrink-0" />
             <span data-tour="theme-toggle" className="inline-flex shrink-0">
@@ -751,6 +753,7 @@ export function CoursesView() {
             ? (key, patch) => departmentStore.assign(dept.id, key, patch)
             : undefined
         }
+        filterDepartmentId={dept?.id}
         getConflict={(s) => conflictByKey.get(`${s.code}-${s.group}`)}
         getConflictingLecturers={(s) =>
           conflictingLecturersByKey.get(`${s.code}-${s.group}`)

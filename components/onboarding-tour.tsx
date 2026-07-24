@@ -216,11 +216,11 @@ function buildTimetableSteps(): DriveStep[] {
       },
     },
     {
-      element: "[data-tour='dept-switch']",
+      element: "[data-tour='header-actions'] > div:first-child",
       popover: {
         title: "Chọn khoa / tổ",
         description: desc(
-          "Nút <strong>Khoa</strong> mở danh sách khoa đã import. Nếu có nhiều khoa, nút tên khoa hiện ngay đây để chuyển nhanh.",
+          "Thanh menu <strong>Bộ môn</strong> mở danh sách khoa đã import. Chọn khoa để chuyển nhanh.",
           "Bộ lọc và cảnh báo trùng chỉ áp dụng cho khoa đang xem."
         ),
         side: "bottom",
