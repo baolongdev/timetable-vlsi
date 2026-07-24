@@ -5,16 +5,18 @@ import Link from "next/link"
 import {
   ArrowRightLeft,
   Building2,
+  Plus,
   Users,
 } from "lucide-react"
 
+import { LecturerFormDialog } from "@/components/lecturers/lecturer-form-dialog"
 import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { PageMenubar } from "@/components/layout/page-menubar"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useDepartments } from "@/lib/department-store"
-import { useLecturers } from "@/lib/lecturer-store"
+import { lecturerStore, useLecturers } from "@/lib/lecturer-store"
 import { cn } from "@/lib/utils"
 
 export function LecturersOverview() {
@@ -47,6 +49,12 @@ export function LecturersOverview() {
     (l) => !l.departmentId && l.guestDepartmentIds && l.guestDepartmentIds.length > 0
   ).length
 
+  const [formOpen, setFormOpen] = React.useState(false)
+
+  const handleSubmit = (data: Omit<import("@/types/lecturer").Lecturer, "id"> & { id?: string }) => {
+    lecturerStore.upsert(data)
+  }
+
   return (
     <div className="flex h-dvh flex-col bg-background text-foreground">
       <div className={cn(pagePad, "flex min-h-0 flex-1 flex-col gap-6")}>
@@ -70,10 +78,19 @@ export function LecturersOverview() {
               </p>
             </div>
           </div>
-          <PageMenubar
-            activePage="lecturers"
-            departments={departments}
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              className="rounded-xl"
+              onClick={() => setFormOpen(true)}
+            >
+              <Plus data-icon="inline-start" />
+              Thêm giảng viên
+            </Button>
+            <PageMenubar
+              activePage="lecturers"
+              departments={departments}
+            />
+          </div>
         </header>
 
         {/* Department cards */}
@@ -186,6 +203,13 @@ export function LecturersOverview() {
             ) : null}
           </div>
         )}
+
+        <LecturerFormDialog
+          open={formOpen}
+          onOpenChange={setFormOpen}
+          lecturer={null}
+          onSubmit={handleSubmit}
+        />
       </div>
     </div>
   )

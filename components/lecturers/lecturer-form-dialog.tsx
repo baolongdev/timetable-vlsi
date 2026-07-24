@@ -4,6 +4,19 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from "@/components/ui/combobox"
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -30,6 +43,83 @@ import {
   type Lecturer,
   type LecturerRole,
 } from "@/types/lecturer"
+
+function DeptMultiSelect({
+  value,
+  excludeId,
+  onValueChange,
+  placeholder,
+}: {
+  value: string[]
+  excludeId?: string
+  onValueChange: (value: string[]) => void
+  placeholder: string
+}) {
+  const { departments } = useDepartments()
+  const anchor = useComboboxAnchor()
+
+  const items = departments
+    .filter((d) => d.id !== excludeId)
+    .map((d) => d.name)
+
+  const idToName = React.useMemo(
+    () => new Map(departments.map((d) => [d.id, d.name])),
+    [departments]
+  )
+  const nameToId = React.useMemo(
+    () => new Map(departments.map((d) => [d.name, d.id])),
+    [departments]
+  )
+
+  const selectedNames = value
+    .map((id) => idToName.get(id) ?? id)
+    .filter((n) => items.includes(n))
+
+  return (
+    <Combobox
+      multiple
+      autoHighlight
+      items={items}
+      value={selectedNames}
+      onValueChange={(names) => {
+        const ids = (names as string[])
+          .map((n) => nameToId.get(n) ?? n)
+          .filter((id) => id !== excludeId)
+        onValueChange(ids)
+      }}
+    >
+      <ComboboxChips ref={anchor} className="w-full rounded-xl">
+        <ComboboxValue>
+          {(values: string[]) => (
+            <React.Fragment>
+              {values.map((name) => (
+                <ComboboxChip key={name}>{name}</ComboboxChip>
+              ))}
+              <ComboboxChipsInput placeholder={placeholder} />
+            </React.Fragment>
+          )}
+        </ComboboxValue>
+      </ComboboxChips>
+      <ComboboxContent
+        anchor={anchor}
+        className="w-auto min-w-(--anchor-width) max-w-80"
+      >
+        <ComboboxEmpty>Không tìm thấy bộ môn.</ComboboxEmpty>
+        <ComboboxList>
+          {(item: string) => (
+            <ComboboxItem
+              key={item}
+              value={item}
+              className="whitespace-nowrap"
+            >
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  )
+}
 
 type LecturerFormDialogProps = {
   open: boolean
@@ -133,6 +223,10 @@ export function LecturerFormDialog({
     }))
   }
 
+  const deptItems = departments
+    .filter((d) => d.id !== form.departmentId)
+    .map((d) => ({ id: d.id, name: d.name }))
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
@@ -208,7 +302,7 @@ export function LecturerFormDialog({
                       }
                     }}
                     items={[
-                      { label: "Không có (thỉnh giảng)", value: "__empty__" },
+                      { label: "Chỉ thỉnh giảng", value: "__empty__" },
                       ...departments.map((d) => ({
                         label: d.name,
                         value: d.id,
@@ -322,57 +416,15 @@ export function LecturerFormDialog({
 
               {departments.length > 1 && (
                 <div className="flex flex-col gap-1.5">
-                  <Label>
-                    {form.departmentId
-                      ? "Bộ môn thỉnh giảng"
-                      : "Bộ môn thỉnh giảng"}
-                  </Label>
-                  <div className="flex flex-wrap gap-2">
-                    {departments
-                      .filter((d) => d.id !== form.departmentId)
-                      .map((d) => {
-                        const checked = form.guestDepartmentIds.includes(d.id)
-                        return (
-                          <button
-                            key={d.id}
-                            type="button"
-                            onClick={() => toggleGuestDept(d.id)}
-                            className={cn(
-                              "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
-                              checked
-                                ? "border-primary bg-primary/10 text-primary"
-                                : "border-border/60 bg-muted/40 text-muted-foreground hover:border-border hover:text-foreground"
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                "flex size-3.5 shrink-0 items-center justify-center rounded-[4px] border",
-                                checked
-                                  ? "border-primary bg-primary text-primary-foreground"
-                                  : "border-muted-foreground/30"
-                              )}
-                            >
-                              {checked && (
-                                <svg
-                                  viewBox="0 0 12 12"
-                                  fill="none"
-                                  className="size-2.5"
-                                >
-                                  <path
-                                    d="M10 3L4.5 8.5L2 6"
-                                    stroke="currentColor"
-                                    strokeWidth="1.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              )}
-                            </span>
-                            {d.name}
-                          </button>
-                        )
-                      })}
-                  </div>
+                  <Label>Bộ môn thỉnh giảng</Label>
+                  <DeptMultiSelect
+                    value={form.guestDepartmentIds}
+                    excludeId={form.departmentId}
+                    onValueChange={(ids) =>
+                      setForm((f) => ({ ...f, guestDepartmentIds: ids }))
+                    }
+                    placeholder="Chọn bộ môn thỉnh giảng…"
+                  />
                   <p className="text-[11px] text-muted-foreground">
                     {form.departmentId
                       ? "Giảng viên có thể được phân công dạy các bộ môn bên dưới."
