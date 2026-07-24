@@ -174,20 +174,22 @@ export function LecturerFormDialog({
                 <div className="flex flex-col gap-1.5">
                   <Label>Bộ môn / khoa</Label>
                   <Select
-                    value={form.departmentId || "__none__"}
+                    value={form.departmentId || null}
                     onValueChange={(value) =>
                       setForm((f) => ({
                         ...f,
-                        departmentId: !value || value === "__none__" ? "" : value,
+                        departmentId: value ?? "",
                       }))
                     }
+                    items={Object.fromEntries(
+                      departments.map((d) => [d.id, d.name])
+                    )}
                   >
                     <SelectTrigger className="h-10 w-full rounded-xl">
                       <SelectValue placeholder="Chọn khoa" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="__none__">— Chưa chọn —</SelectItem>
                         {departments.map((d) => (
                           <SelectItem key={d.id} value={d.id}>
                             {d.name}
