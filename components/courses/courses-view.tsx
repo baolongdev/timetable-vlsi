@@ -534,8 +534,8 @@ export function CoursesView() {
                             <Tooltip>
                               <TooltipTrigger
                                 render={
-                                  <span
-                                    className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-destructive/10 px-1 py-0.5 text-[10px] font-medium text-destructive"
+                                   <span
+                                    className="inline-flex h-5 shrink-0 items-center gap-1 rounded-4xl bg-destructive/10 px-2 font-mono text-xs tabular-nums text-destructive"
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                 }
