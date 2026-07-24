@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 
-import { DeptIndexRedirect } from "@/components/dept-index-redirect"
+import { TimetablesOverview } from "@/components/timetable/timetables-overview"
 
 export const metadata: Metadata = {
   title: "Thời khóa biểu",
@@ -9,5 +9,5 @@ export const metadata: Metadata = {
 }
 
 export default function TimetableIndexPage() {
-  return <DeptIndexRedirect base="/timetable" />
+  return <TimetablesOverview />
 }
