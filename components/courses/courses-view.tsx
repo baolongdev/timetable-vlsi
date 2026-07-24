@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 
 import { CourseRenameDialog } from "@/components/courses/course-rename-dialog"
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { PageMenubar } from "@/components/layout/page-menubar"
 import { LecturerChip } from "@/components/lecturer-chip"
 
@@ -295,16 +296,12 @@ export function CoursesView() {
         {/* Header */}
         <header className="flex min-w-0 shrink-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-fit text-muted-foreground"
-              render={<Link href="/timetable" />}
-              nativeButton={false}
-            >
-              <ArrowLeft data-icon="inline-start" />
-              Timetable
-            </Button>
+            <PageBreadcrumb
+              items={[
+                { label: "Môn học", href: "/courses" },
+                ...(dept ? [{ label: dept.name }] : []),
+              ]}
+            />
             <div className="flex min-w-0 flex-col gap-1">
               <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
                 {dept ? `Môn học — ${dept.name}` : "Môn học"}

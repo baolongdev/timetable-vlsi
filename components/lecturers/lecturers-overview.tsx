@@ -9,6 +9,7 @@ import {
   Users,
 } from "lucide-react"
 
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { PageMenubar } from "@/components/layout/page-menubar"
 import { pagePad } from "@/components/timetable/layout"
 import { Button } from "@/components/ui/button"
@@ -42,16 +43,7 @@ export function LecturersOverview() {
         {/* Header */}
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="flex flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-fit -ml-2 text-muted-foreground"
-              render={<Link href="/timetable" />}
-              nativeButton={false}
-            >
-              <ArrowLeft data-icon="inline-start" />
-              Timetable
-            </Button>
+            <PageBreadcrumb items={[{ label: "Giảng viên" }]} />
             <div className="flex flex-col gap-1">
               <h1 className="font-heading text-2xl font-semibold tracking-tight">
                 Giảng viên

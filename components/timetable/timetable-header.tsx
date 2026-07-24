@@ -1,5 +1,6 @@
 "use client"
 
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { PageMenubar } from "@/components/layout/page-menubar"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +35,12 @@ export function TimetableHeader({
       )}
     >
       <div className="flex min-w-0 flex-col gap-1">
+        <PageBreadcrumb
+          items={[
+            { label: "Thời khóa biểu", href: "/timetable" },
+            ...(departmentName ? [{ label: departmentName }] : []),
+          ]}
+        />
         <h1 className="font-heading text-2xl font-semibold tracking-tight text-foreground">
           {departmentName ?? "Timetable"}
         </h1>

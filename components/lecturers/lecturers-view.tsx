@@ -15,6 +15,7 @@ import {
 
 import { LecturerDeleteDialog } from "@/components/lecturers/lecturer-delete-dialog"
 import { LecturerFormDialog } from "@/components/lecturers/lecturer-form-dialog"
+import { PageBreadcrumb } from "@/components/layout/page-breadcrumb"
 import { PageMenubar } from "@/components/layout/page-menubar"
 import { pagePad } from "@/components/timetable/layout"
 import { Badge } from "@/components/ui/badge"
@@ -145,16 +146,16 @@ export function LecturersView() {
         {/* Header */}
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="flex min-w-0 flex-col gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-fit -ml-2 text-muted-foreground"
-              render={<Link href="/lecturers" />}
-              nativeButton={false}
-            >
-              <ArrowLeft data-icon="inline-start" />
-              Tổng quan
-            </Button>
+            <PageBreadcrumb
+              items={[
+                { label: "Giảng viên", href: "/lecturers" },
+                ...(dept
+                  ? [{ label: dept.name }]
+                  : isUnassigned
+                    ? [{ label: "Chưa phân khoa" }]
+                    : []),
+              ]}
+            />
             <div className="flex min-w-0 flex-col gap-1">
               <h1 className="font-heading truncate text-2xl font-semibold tracking-tight">
                 {pageTitle}
