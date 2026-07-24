@@ -235,6 +235,15 @@ export function CoursesView() {
   const [renameOpen, setRenameOpen] = React.useState(false)
   const [renaming, setRenaming] = React.useState<Course | null>(null)
 
+  const PAGE_SIZE = 20
+  const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE)
+  const sentinelRef = React.useRef<HTMLDivElement>(null)
+
+  // Reset count khi filter/search đổi
+  React.useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [search, lecturerFilter])
+
   const openSections = (course: Course) => {
     setViewing(course)
     setSectionsOpen(true)
@@ -261,6 +270,22 @@ export function CoursesView() {
       return matchSearch && matchLecturer
     })
   }, [effectiveCourses, search, lecturerFilter])
+
+  // IntersectionObserver: load thêm khi sentinel vào viewport
+  React.useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((n) => n + PAGE_SIZE)
+        }
+      },
+      { rootMargin: "200px" }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [filtered.length])
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
@@ -512,7 +537,8 @@ export function CoursesView() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((course, index) => {
+                <>
+                  {filtered.slice(0, visibleCount).map((course, index) => {
                   // Mỗi MSMH một dòng riêng — chỉ đếm nhóm của đúng mã đó
                   // (không gộp CO1024 (TN) vào CO1023 như trước)
                   const sectionCount = effectiveSections.filter(
@@ -664,7 +690,26 @@ export function CoursesView() {
                       </TableCell>
                     </TableRow>
                   )
-                })
+                })}
+                  {visibleCount < filtered.length ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="h-10 py-2 text-center text-xs text-muted-foreground"
+                      >
+                        <div className="flex items-center justify-center gap-2">
+                          <Skeleton className="h-3 w-3 rounded-full animate-pulse" />
+                          Đang tải thêm&hellip;
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  <TableRow>
+                    <TableCell colSpan={8} className="p-0">
+                      <div ref={sentinelRef} className="h-px" />
+                    </TableCell>
+                  </TableRow>
+                </>
               )}
             </TableBody>
           </Table>
