@@ -57,6 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   formatLecturerWithStaffId,
   groupLecturersByRole,
@@ -468,16 +469,36 @@ export function CoursesView() {
             </TableHeader>
             <TableBody>
               {!hydrated ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="h-40 text-center text-muted-foreground"
-                  >
-                    <span className="text-sm text-muted-foreground">
-                      Đang tải danh sách môn&hellip;
-                    </span>
-                  </TableCell>
-                </TableRow>
+                <>
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <Skeleton className="h-3 w-6" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-16 rounded-md" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-48" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-14 rounded-md" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-12 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <Skeleton className="h-4 w-36" />
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        <Skeleton className="h-4 w-36" />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
               ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
