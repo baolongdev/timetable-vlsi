@@ -47,8 +47,14 @@ type TimetableGridProps = {
 /** Fixed width (px) of ONE lane — every card renders the same width */
 const LANE_WIDTH = 240
 
+/** Context cho LazyCard — IntersectionObserver dùng scroll container làm root */
+const ScrollCtx = React.createContext<React.RefObject<HTMLDivElement | null>>(
+  { current: null }
+)
+
 /**
  * Lazy-load wrapper: card chỉ render vào DOM khi scroll tới gần (±200px).
+ * Khi cuộn ra xa (>500px) thì unload về skeleton để giải phóng DOM.
  * Placeholder giữ vị trí CSS (absolute + top/height %) để layout không nhảy.
  */
 function LazyCard({
@@ -60,22 +66,36 @@ function LazyCard({
 }) {
   const ref = React.useRef<HTMLDivElement>(null)
   const [visible, setVisible] = React.useState(false)
+  const rootRef = React.useContext(ScrollCtx)
 
   React.useEffect(() => {
     const el = ref.current
-    if (!el || visible) return
+    if (!el) return
+
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setVisible(true)
-          io.disconnect()
+        } else if (visible) {
+          // Unload khi cuộn ra xa — giữ DOM nhẹ
+          const rect = entry.boundingClientRect
+          const root = rootRef.current
+          if (root) {
+            const rootRect = root.getBoundingClientRect()
+            const dist =
+              Math.max(0, rootRect.top - rect.bottom) +
+              Math.max(0, rect.top - rootRect.bottom) +
+              Math.max(0, rootRect.left - rect.right) +
+              Math.max(0, rect.left - rootRect.right)
+            if (dist > 500) setVisible(false)
+          }
         }
       },
-      { rootMargin: "200px" }
+      { root: rootRef.current, rootMargin: "300px" }
     )
     io.observe(el)
     return () => io.disconnect()
-  }, [visible])
+  }, [visible, rootRef])
 
   if (!visible) {
     return (
@@ -431,66 +451,72 @@ export const TimetableGrid = React.forwardRef<
 
   return (
     <div className="relative h-full min-h-0 w-full">
-      <div
-        ref={scrollRef}
-        // cursor-grab mặc định; lúc kéo đổi bằng classList (không re-render)
-        className="scrollbar-minimal h-full min-h-0 w-full cursor-grab overflow-auto bg-background touch-none"
-      >
+      <ScrollCtx.Provider value={scrollRef}>
         <div
-          ref={exportNodeRef}
-          className={periodColVar + " flex w-fit min-w-full flex-col bg-background"}
+          ref={scrollRef}
+          // cursor-grab mặc định; lúc kéo đổi bằng classList (không re-render)
+          className="scrollbar-minimal h-full min-h-0 w-full cursor-grab overflow-auto bg-background touch-none"
         >
-          <DayHeader days={days} gridTemplateColumns={gridTemplateColumns} />
-
           <div
-            // `isolate`: reset z-index của card trong body — card không đè lên
-            // day header sticky khi cuộn dọc
-            className="relative isolate grid flex-1"
-            style={{
-              gridTemplateColumns,
-              minHeight: periodCount * PERIOD_HEIGHT,
-            }}
+            ref={exportNodeRef}
+            className={
+              periodColVar + " flex w-fit min-w-full flex-col bg-background"
+            }
           >
-            <PeriodColumn highlightRange={highlightRange} />
+            <DayHeader days={days} gridTemplateColumns={gridTemplateColumns} />
 
-            {dayLayouts.map(({ day, positioned }) => (
-              <TimetableCell
-                key={day.day}
-                onAddSchedule={(period) => onAddSchedule?.(day.day, period)}
-              >
-                {positioned.map(({ schedule, lane }) => {
-                  const span = schedule.endPeriod - schedule.startPeriod + 1
-                  const cardStyle = periodOffsetStyle(
-                    schedule.startPeriod,
-                    schedule.endPeriod,
-                    periodCount
-                  )
-                  const posStyle: React.CSSProperties = {
-                    ...cardStyle,
-                    left: lane * LANE_WIDTH + cardInsetX,
-                    width: LANE_WIDTH - cardInsetX * 2,
-                  }
+            <div
+              // `isolate`: reset z-index của card trong body — card không đè lên
+              // day header sticky khi cuộn dọc
+              className="relative isolate grid flex-1"
+              style={{
+                gridTemplateColumns,
+                minHeight: periodCount * PERIOD_HEIGHT,
+              }}
+            >
+              <PeriodColumn highlightRange={highlightRange} />
 
-                  return (
-                    <LazyCard key={schedule.id} style={posStyle}>
-                      <TimetableCard
-                        schedule={schedule}
-                        span={span}
-                        selected={selectedId === schedule.id}
-                        hasConflict={conflictIds?.has(schedule.id) ?? false}
-                        conflictHint={conflictHints?.get(schedule.id)}
-                        style={posStyle}
-                        onClick={() => onSelect(schedule)}
-                        onPeriodHoverChange={setHighlightRange}
-                      />
-                    </LazyCard>
-                  )
-                })}
-              </TimetableCell>
-            ))}
+              {dayLayouts.map(({ day, positioned }) => (
+                <TimetableCell
+                  key={day.day}
+                  onAddSchedule={(period) => onAddSchedule?.(day.day, period)}
+                >
+                  {positioned.map(({ schedule, lane }) => {
+                    const span = schedule.endPeriod - schedule.startPeriod + 1
+                    const cardStyle = periodOffsetStyle(
+                      schedule.startPeriod,
+                      schedule.endPeriod,
+                      periodCount
+                    )
+                    const posStyle: React.CSSProperties = {
+                      ...cardStyle,
+                      left: lane * LANE_WIDTH + cardInsetX,
+                      width: LANE_WIDTH - cardInsetX * 2,
+                    }
+
+                    return (
+                      <LazyCard key={schedule.id} style={posStyle}>
+                        <TimetableCard
+                          schedule={schedule}
+                          span={span}
+                          selected={selectedId === schedule.id}
+                          hasConflict={
+                            conflictIds?.has(schedule.id) ?? false
+                          }
+                          conflictHint={conflictHints?.get(schedule.id)}
+                          style={posStyle}
+                          onClick={() => onSelect(schedule)}
+                          onPeriodHoverChange={setHighlightRange}
+                        />
+                      </LazyCard>
+                    )
+                  })}
+                </TimetableCell>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </ScrollCtx.Provider>
     </div>
   )
 })
