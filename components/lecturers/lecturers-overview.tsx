@@ -130,7 +130,7 @@ export function LecturersOverview() {
             {/* Guest-only lecturers card */}
             {guestOnlyCount > 0 ? (
               <Link
-                href="/lecturers/unassigned"
+                href="/lecturers/guest-only"
                 className="group flex flex-col gap-3 rounded-xl border border-dashed border-amber-300/60 p-5 transition-colors hover:border-amber-400 hover:bg-amber-50/50 dark:border-amber-700/40 dark:hover:border-amber-600 dark:hover:bg-amber-950/30"
               >
                 <div className="flex items-center gap-3">
