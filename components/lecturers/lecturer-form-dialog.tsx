@@ -313,7 +313,8 @@ export function LecturerFormDialog({
                     >
                       <SelectTrigger
                         className={cn(
-                          "h-10 w-full rounded-xl pr-8",
+                          "h-10 w-full rounded-xl",
+                          form.departmentId && "pr-8",
                           errors.departmentId && "border-destructive"
                         )}
                       >
@@ -364,7 +365,12 @@ export function LecturerFormDialog({
                           }))
                       }}
                     >
-                      <SelectTrigger className="h-10 w-full rounded-xl pr-8">
+                      <SelectTrigger
+                        className={cn(
+                          "h-10 w-full rounded-xl",
+                          form.role !== "Giảng viên" && "pr-8"
+                        )}
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -377,7 +383,7 @@ export function LecturerFormDialog({
                         </SelectGroup>
                       </SelectContent>
                     </Select>
-                    {form.role && (
+                    {form.role !== "Giảng viên" && (
                       <button
                         type="button"
                         onClick={() =>
